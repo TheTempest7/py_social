@@ -4,13 +4,16 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/TheTempest7/social_network/app-go/internal/models"
 )
 
 // Ошибки репозитория
 var (
-	ErrUserNotFound = errors.New("пользователь не найден")
+	ErrUserNotFound  = errors.New("пользователь не найден")
+	ErrEmailTaken    = errors.New("email уже занят")
+	ErrUsernameTaken = errors.New("username уже занят")
 )
 
 type UserRepository struct {
@@ -36,6 +39,15 @@ func (r *UserRepository) CreateUser(user *models.User) (*models.User, error) {
 		user.IsActive,
 	)
 	if err != nil {
+		errStr := err.Error()
+		if strings.Contains(errStr, "UNIQUE constraint failed") {
+			if strings.Contains(errStr, "users.email") {
+				return nil, ErrEmailTaken
+			}
+			if strings.Contains(errStr, "users.username") {
+				return nil, ErrUsernameTaken
+			}
+		}
 		return nil, fmt.Errorf("создание пользователя: %w", err)
 	}
 

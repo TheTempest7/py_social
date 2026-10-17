@@ -5,8 +5,12 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/TheTempest7/social_network/app-go/internal/auth"
 	"github.com/TheTempest7/social_network/app-go/internal/dto"
+	"github.com/TheTempest7/social_network/app-go/internal/middleware"
+	"github.com/TheTempest7/social_network/app-go/internal/repository"
 	"github.com/TheTempest7/social_network/app-go/internal/services"
+	"github.com/TheTempest7/social_network/app-go/internal/validators"
 )
 
 type AuthHandler struct {
@@ -36,13 +40,18 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := validators.Validate(req); err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	// 2. Вызываем сервис
 	user, err := h.userService.RegisterUser(req)
 	if err != nil {
 		switch {
-		case errors.Is(err, services.ErrEmailTaken):
+		case errors.Is(err, repository.ErrEmailTaken):
 			respondError(w, http.StatusConflict, "email уже занят")
-		case errors.Is(err, services.ErrUsernameTaken):
+		case errors.Is(err, repository.ErrUsernameTaken):
 			respondError(w, http.StatusConflict, "username уже занят")
 		default:
 			respondError(w, http.StatusInternalServerError, "ошибка регистрации")
@@ -69,6 +78,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req dto.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "невалидный JSON")
+		return
+	}
+
+	if err := validators.Validate(req); err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -132,4 +146,31 @@ func respondJSON(w http.ResponseWriter, status int, data any) {
 // respondError — пишет JSON-ошибку
 func respondError(w http.ResponseWriter, status int, message string) {
 	respondJSON(w, status, map[string]string{"error": message})
+}
+
+// Me — текущий пользователь
+// @Summary      Текущий пользователь
+// @Description  Возвращает данные авторизованного пользователя
+// @Tags         auth
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {object} dto.UserResponse
+// @Failure      401 {string} string "Не авторизован"
+// @Router       /api/auth/me [get]
+func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
+	// Достаём claims из context
+	claims, ok := r.Context().Value(middleware.UserContextKey).(*auth.Claims)
+	if !ok {
+		respondError(w, http.StatusUnauthorized, "не авторизован")
+		return
+	}
+
+	// Ищем пользователя в БД
+	user, err := h.userService.GetByID(claims.UserID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "пользователь не найден")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, user)
 }

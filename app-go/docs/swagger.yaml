@@ -19,6 +19,7 @@ definitions:
       last_name:
         type: string
       password:
+        maxLength: 72
         minLength: 8
         type: string
       username:
@@ -95,6 +96,25 @@ paths:
       summary: Выход
       tags:
       - auth
+  /api/auth/me:
+    get:
+      description: Возвращает данные авторизованного пользователя
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Текущий пользователь
+      tags:
+      - auth
   /api/auth/register:
     post:
       consumes:
@@ -125,4 +145,9 @@ paths:
       summary: Регистрация
       tags:
       - auth
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

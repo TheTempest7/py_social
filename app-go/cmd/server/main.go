@@ -3,6 +3,10 @@
 // @description     API социальной сети
 // @host            localhost:8080
 // @BasePath        /
+//
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 
 package main
 
@@ -12,13 +16,13 @@ import (
 	"net/http"
 	"time"
 
+	_ "github.com/TheTempest7/social_network/app-go/docs"
 	"github.com/TheTempest7/social_network/app-go/internal/database"
 	"github.com/TheTempest7/social_network/app-go/internal/handlers"
+	appmw "github.com/TheTempest7/social_network/app-go/internal/middleware"
 	"github.com/TheTempest7/social_network/app-go/internal/repository"
 	"github.com/TheTempest7/social_network/app-go/internal/services"
 	"github.com/joho/godotenv"
-
-	_ "github.com/TheTempest7/social_network/app-go/docs"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -83,11 +87,17 @@ func main() {
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 	r.Route("/api/auth", func(r chi.Router) {
+		// Публичные
 		r.Post("/register", authHandler.Register)
 		r.Post("/login", authHandler.Login)
 		r.Post("/logout", authHandler.Logout)
-	})
 
+		// 👇 Защищённые — только с валидным JWT
+		r.Group(func(r chi.Router) {
+			r.Use(appmw.RequireAuth)
+			r.Get("/me", authHandler.Me)
+		})
+	})
 	fmt.Println("🚀 Сервер запущен на http://localhost:8080")
 	if err := http.ListenAndServe(":8080", r); err != nil {
 		fmt.Println("Ошибка сервера:", err)

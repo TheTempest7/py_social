@@ -14,9 +14,8 @@ import (
 
 // Ошибки сервиса
 var (
-	ErrEmailTaken    = errors.New("email уже занят")
-	ErrUsernameTaken = errors.New("username уже занят")
-	ErrInvalidCreds  = errors.New("неверный логин или пароль")
+	ErrInvalidCreds    = errors.New("неверный логин или пароль")
+	ErrPasswordTooLong = errors.New("пароль слишком длинный (макс 72 байта)")
 )
 
 type UserService struct {
@@ -29,22 +28,13 @@ func NewUserService(repo *repository.UserRepository) *UserService {
 
 // RegisterUser — регистрация нового пользователя
 func (s *UserService) RegisterUser(req dto.RegisterRequest) (*dto.UserResponse, error) {
-	// 1. Проверяем, что email/username свободны
-	exists, err := s.repo.UserExists(req.Email, req.Username)
-	if err != nil {
-		return nil, fmt.Errorf("проверка существования: %w", err)
-	}
-	if exists {
-		// Уточним, что именно занято
-		if user, _ := s.repo.GetUserByEmail(req.Email); user != nil {
-			return nil, ErrEmailTaken
-		}
-		return nil, ErrUsernameTaken
-	}
 
 	// 2. Хешируем пароль
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
+		if errors.Is(err, bcrypt.ErrPasswordTooLong) {
+			return nil, ErrPasswordTooLong // 👈 своя ошибка
+		}
 		return nil, fmt.Errorf("хеширование пароля: %w", err)
 	}
 
@@ -98,6 +88,14 @@ func (s *UserService) LoginUser(req dto.LoginRequest) (*models.User, string, err
 	}
 
 	return user, token, nil
+}
+
+func (s *UserService) GetByID(id int) (*dto.UserResponse, error) {
+	user, err := s.repo.GetUserByID(id)
+	if err != nil {
+		return nil, err
+	}
+	return toUserResponse(user), nil
 }
 
 // toUserResponse — конвертер модели в DTO
