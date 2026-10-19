@@ -17,6 +17,7 @@ import (
 	"time"
 
 	_ "github.com/TheTempest7/social_network/app-go/docs"
+	"github.com/TheTempest7/social_network/app-go/internal/config"
 	"github.com/TheTempest7/social_network/app-go/internal/database"
 	"github.com/TheTempest7/social_network/app-go/internal/handlers"
 	appmw "github.com/TheTempest7/social_network/app-go/internal/middleware"
@@ -36,6 +37,8 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		fmt.Println("⚠️ .env не найден, используем переменные окружения")
 	}
+
+	config.Load()
 
 	db, err := database.ConnectDB("data/social_app.db")
 	if err != nil {

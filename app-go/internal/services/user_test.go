@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TheTempest7/social_network/app-go/internal/config"
 	"github.com/TheTempest7/social_network/app-go/internal/database"
 	"github.com/TheTempest7/social_network/app-go/internal/dto"
 	"github.com/TheTempest7/social_network/app-go/internal/repository"
@@ -20,6 +21,13 @@ func setupService(t *testing.T) *services.UserService {
 
 	// 👇 Уникальное имя БД на каждый тест, чтобы тесты не влияли друг на друга
 	dbName := fmt.Sprintf("file:test_%d?mode=memory&cache=shared", time.Now().UnixNano())
+
+	config.AppConfig = &config.Config{
+		JWTSecret:      "test-secret",
+		JWTLifetime:    24 * time.Hour,
+		CookieSecure:   false,
+		CookieSameSite: "Lax",
+	}
 
 	db, err := database.ConnectDB(dbName)
 	if err != nil {

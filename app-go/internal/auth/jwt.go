@@ -3,9 +3,9 @@ package auth
 import (
 	"errors"
 	"os"
-	"strconv"
 	"time"
 
+	"github.com/TheTempest7/social_network/app-go/internal/config"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -27,21 +27,13 @@ func getSecret() []byte {
 	return []byte(secret)
 }
 
-func getLifetime() time.Duration {
-	hours, err := strconv.Atoi(os.Getenv("JWT_LIFETIME_HOURS"))
-	if err != nil || hours <= 0 {
-		hours = 24
-	}
-	return time.Duration(hours) * time.Hour
-}
-
 // GenerateToken — создаёт JWT
 func GenerateToken(userID int, username string) (string, error) {
 	claims := Claims{
 		UserID:   userID,
 		Username: username,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(getLifetime())),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(config.AppConfig.JWTLifetime)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}

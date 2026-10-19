@@ -6,10 +6,12 @@ import (
 	"net/http"
 
 	"github.com/TheTempest7/social_network/app-go/internal/auth"
+	"github.com/TheTempest7/social_network/app-go/internal/config"
 	"github.com/TheTempest7/social_network/app-go/internal/dto"
 	"github.com/TheTempest7/social_network/app-go/internal/middleware"
 	"github.com/TheTempest7/social_network/app-go/internal/repository"
 	"github.com/TheTempest7/social_network/app-go/internal/services"
+	"github.com/TheTempest7/social_network/app-go/internal/utils"
 	"github.com/TheTempest7/social_network/app-go/internal/validators"
 )
 
@@ -101,10 +103,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Name:     "access_token",
 		Value:    token,
 		Path:     "/",
-		MaxAge:   24 * 60 * 60, // 24 часа
-		HttpOnly: true,         // JS не прочитает
-		Secure:   false,        // true в проде (HTTPS)
-		SameSite: http.SameSiteLaxMode,
+		MaxAge:   int(config.AppConfig.JWTLifetime.Seconds()),
+		HttpOnly: true, // JS не прочитает
+		Secure:   config.AppConfig.CookieSecure,
+		SameSite: utils.ParseSameSite(config.AppConfig.CookieSameSite),
 	})
 
 	// 3. Пока отвечаем просто "ок" (JWT добавим позже)
