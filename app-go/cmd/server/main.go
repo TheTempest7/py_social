@@ -48,7 +48,7 @@ func main() {
 	defer db.Close()
 	fmt.Println("✅ Подключено к SQLite")
 
-	if err := database.RunMigrations(db, "migrations"); err != nil {
+	if err := database.RunMigrations("data/social_app.db", "migrations"); err != nil {
 		fmt.Println("❌ Ошибка миграций:", err)
 		return
 	}

@@ -1,26 +1,29 @@
 package services_test
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/TheTempest7/social_network/app-go/internal/config"
-	"github.com/TheTempest7/social_network/app-go/internal/database"
 	"github.com/TheTempest7/social_network/app-go/internal/dto"
 	"github.com/TheTempest7/social_network/app-go/internal/repository"
 	"github.com/TheTempest7/social_network/app-go/internal/services"
+
+	_ "modernc.org/sqlite"
 )
 
 // setupService — создаёт чистый Service с изолированной БД в памяти.
 // БД автоматически закрывается после завершения теста.
 func setupService(t *testing.T) *services.UserService {
 	t.Helper() // помечает функцию как хелпер, чтобы ошибки указывали на строку вызова
-
-	// 👇 Уникальное имя БД на каждый тест, чтобы тесты не влияли друг на друга
-	dbName := fmt.Sprintf("file:test_%d?mode=memory&cache=shared", time.Now().UnixNano())
 
 	config.AppConfig = &config.Config{
 		JWTSecret:      "test-secret",
@@ -29,16 +32,17 @@ func setupService(t *testing.T) *services.UserService {
 		CookieSameSite: "Lax",
 	}
 
-	db, err := database.ConnectDB(dbName)
+	// Создаём уникальную in-memory БД для каждого теста
+	dbName := fmt.Sprintf("file:test_%d?mode=memory&cache=shared", time.Now().UnixNano())
+	db, err := sql.Open("sqlite", dbName)
 	if err != nil {
-		t.Fatalf("БД не поднялась: %v", err)
+		t.Fatalf("БД не открылась: %v", err)
 	}
-	t.Cleanup(func() { db.Close() }) // 👈 закроется автоматически после теста
+	t.Cleanup(func() { db.Close() })
 
-	if err := database.RunMigrations(db, "../../migrations"); err != nil {
-		t.Fatalf("миграции: %v", err)
-	}
-
+	// Применяем миграции. ВАЖНО: передаем dbName прямо как есть (с file:...)
+	// И указываем путь к папке с миграциями
+	applyMigrationsForTest(t, db)
 	repo := repository.NewUserRepository(db)
 	return services.NewUserService(repo)
 }
@@ -183,5 +187,35 @@ func TestGetByIDNotFound(t *testing.T) {
 	_, err := svc.GetByID(99999)
 	if err == nil {
 		t.Fatal("ожидали ошибку, получили nil")
+	}
+}
+
+func applyMigrationsForTest(t *testing.T, db *sql.DB) {
+	t.Helper()
+
+	// Читаем файлы миграций
+	files, err := filepath.Glob("../../migrations/*.up.sql")
+	if err != nil {
+		t.Fatalf("поиск миграций: %v", err)
+	}
+	sort.Strings(files) // сортируем по порядку
+
+	for _, file := range files {
+		content, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatalf("чтение %s: %v", file, err)
+		}
+
+		// Выполняем SQL по одной команде
+		statements := strings.Split(string(content), ";")
+		for _, stmt := range statements {
+			stmt = strings.TrimSpace(stmt)
+			if stmt == "" {
+				continue
+			}
+			if _, err := db.Exec(stmt); err != nil {
+				t.Fatalf("выполнение %s: %v", file, err)
+			}
+		}
 	}
 }
