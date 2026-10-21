@@ -10,6 +10,8 @@ import (
 	"github.com/TheTempest7/social_network/app-go/internal/models"
 )
 
+const queryColumns = "id, email, username, password_hash, first_name, last_name, is_active, created_at, updated_at"
+
 // Ошибки репозитория
 var (
 	ErrUserNotFound  = errors.New("пользователь не найден")
@@ -19,6 +21,27 @@ var (
 
 type UserRepository struct {
 	db *sql.DB
+}
+
+func scanUser(row *sql.Row) (*models.User, error) {
+	var user models.User
+
+	// 👇 Вызываем Scan на объекте *sql.Row
+	err := row.Scan(
+		&user.ID, &user.Email, &user.Username, &user.PasswordHash,
+		&user.FirstName, &user.LastName, &user.IsActive,
+		&user.CreatedAt, &user.UpdatedAt,
+	)
+
+	// 👇 Вот тут твои ошибки
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrUserNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("получение пользователя: %w", err)
+	}
+
+	return &user, nil
 }
 
 func NewUserRepository(db *sql.DB) *UserRepository {
@@ -64,90 +87,39 @@ func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) (*mo
 
 func (r *UserRepository) GetUserByID(ctx context.Context, id int) (*models.User, error) {
 	query := `
-        SELECT id, email, username, password_hash, first_name, last_name, is_active, created_at, updated_at
+        SELECT ` + queryColumns + `
         FROM users
         WHERE id = ?
     `
 
-	var user models.User
-	err := r.db.QueryRowContext(ctx, query, id).Scan(
-		&user.ID,
-		&user.Email,
-		&user.Username,
-		&user.PasswordHash,
-		&user.FirstName,
-		&user.LastName,
-		&user.IsActive,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
-	if err == sql.ErrNoRows {
-		return nil, ErrUserNotFound
-	}
-	if err != nil {
-		return nil, fmt.Errorf("получение пользователя: %w", err)
-	}
+	row := r.db.QueryRowContext(ctx, query, id)
 
-	return &user, nil
+	return scanUser(row)
 }
 
 // GetUserByEmail — ищет по email
 func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	query := `
-        SELECT id, email, username, password_hash, first_name, last_name, is_active, created_at, updated_at
+        SELECT ` + queryColumns + `
         FROM users
         WHERE email = ?
     `
 
-	var user models.User
-	err := r.db.QueryRowContext(ctx, query, email).Scan(
-		&user.ID,
-		&user.Email,
-		&user.Username,
-		&user.PasswordHash,
-		&user.FirstName,
-		&user.LastName,
-		&user.IsActive,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
-	if err == sql.ErrNoRows {
-		return nil, ErrUserNotFound
-	}
-	if err != nil {
-		return nil, fmt.Errorf("получение пользователя: %w", err)
-	}
+	row := r.db.QueryRowContext(ctx, query, email)
 
-	return &user, nil
+	return scanUser(row)
 }
 
 func (r *UserRepository) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
 	query := `
-        SELECT id, email, username, password_hash, first_name, last_name, is_active, created_at, updated_at
+        SELECT ` + queryColumns + `
         FROM users
         WHERE username = ?
     `
 
-	var user models.User
-	err := r.db.QueryRowContext(ctx, query, username).Scan(
-		&user.ID,
-		&user.Email,
-		&user.Username,
-		&user.PasswordHash,
-		&user.FirstName,
-		&user.LastName,
-		&user.IsActive,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
-	if err == sql.ErrNoRows {
-		return nil, ErrUserNotFound
-	}
-	if err != nil {
-		return nil, fmt.Errorf("получение пользователя: %w", err)
-	}
+	row := r.db.QueryRowContext(ctx, query, username)
 
-	return &user, nil
+	return scanUser(row)
 }
 
 func (r *UserRepository) UserExists(ctx context.Context, email, username string) (bool, error) {
