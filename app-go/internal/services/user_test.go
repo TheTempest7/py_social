@@ -1,6 +1,7 @@
 package services_test
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -70,7 +71,7 @@ func TestRegisterUserRaceCondition(t *testing.T) {
 	for i := 0; i < goroutines; i++ {
 		go func() {
 			defer wg.Done()
-			_, err := svc.RegisterUser(req)
+			_, err := svc.RegisterUser(context.Background(), req)
 
 			mu.Lock()
 			defer mu.Unlock()
@@ -109,13 +110,13 @@ func TestLoginUserSuccess(t *testing.T) {
 		Username: "loginuser",
 		Password: "12345678",
 	}
-	_, err := svc.RegisterUser(regReq)
+	_, err := svc.RegisterUser(context.Background(), regReq)
 	if err != nil {
 		t.Fatalf("регистрация: %v", err)
 	}
 
 	// Теперь логинимся
-	user, token, err := svc.LoginUser(dto.LoginRequest{
+	user, token, err := svc.LoginUser(context.Background(), dto.LoginRequest{
 		Username: "loginuser",
 		Password: "12345678",
 	})
@@ -137,7 +138,7 @@ func TestLoginUserSuccess(t *testing.T) {
 func TestLoginUserWrongPassword(t *testing.T) {
 	svc := setupService(t)
 
-	_, err := svc.RegisterUser(dto.RegisterRequest{
+	_, err := svc.RegisterUser(context.Background(), dto.RegisterRequest{
 		Email:    "wrong@test.com",
 		Username: "wrongpass",
 		Password: "correct123",
@@ -146,7 +147,7 @@ func TestLoginUserWrongPassword(t *testing.T) {
 		t.Fatalf("регистрация: %v", err)
 	}
 
-	_, _, err = svc.LoginUser(dto.LoginRequest{
+	_, _, err = svc.LoginUser(context.Background(), dto.LoginRequest{
 		Username: "wrongpass",
 		Password: "wrong123",
 	})
@@ -159,7 +160,7 @@ func TestLoginUserWrongPassword(t *testing.T) {
 func TestGetByIDSuccess(t *testing.T) {
 	svc := setupService(t)
 
-	created, err := svc.RegisterUser(dto.RegisterRequest{
+	created, err := svc.RegisterUser(context.Background(), dto.RegisterRequest{
 		Email:    "getbyid@test.com",
 		Username: "getbyid",
 		Password: "12345678",
@@ -168,7 +169,7 @@ func TestGetByIDSuccess(t *testing.T) {
 		t.Fatalf("регистрация: %v", err)
 	}
 
-	found, err := svc.GetByID(created.ID)
+	found, err := svc.GetByID(context.Background(), created.ID)
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -184,7 +185,7 @@ func TestGetByIDSuccess(t *testing.T) {
 func TestGetByIDNotFound(t *testing.T) {
 	svc := setupService(t)
 
-	_, err := svc.GetByID(99999)
+	_, err := svc.GetByID(context.Background(), 99999)
 	if err == nil {
 		t.Fatal("ожидали ошибку, получили nil")
 	}

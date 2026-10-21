@@ -48,7 +48,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2. Вызываем сервис
-	user, err := h.userService.RegisterUser(req)
+	user, err := h.userService.RegisterUser(r.Context(), req)
 	if err != nil {
 		switch {
 		case errors.Is(err, repository.ErrEmailTaken):
@@ -89,7 +89,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2. Вызываем сервис
-	user, token, err := h.userService.LoginUser(req)
+	user, token, err := h.userService.LoginUser(r.Context(), req)
 	if err != nil {
 		if errors.Is(err, services.ErrInvalidCreds) {
 			respondError(w, http.StatusUnauthorized, "неверный логин или пароль")
@@ -168,7 +168,7 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Ищем пользователя в БД
-	user, err := h.userService.GetByID(claims.UserID)
+	user, err := h.userService.GetByID(r.Context(), claims.UserID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "пользователь не найден")
 		return

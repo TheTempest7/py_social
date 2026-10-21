@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -27,7 +28,7 @@ func NewUserService(repo *repository.UserRepository) *UserService {
 }
 
 // RegisterUser — регистрация нового пользователя
-func (s *UserService) RegisterUser(req dto.RegisterRequest) (*dto.UserResponse, error) {
+func (s *UserService) RegisterUser(ctx context.Context, req dto.RegisterRequest) (*dto.UserResponse, error) {
 
 	// 2. Хешируем пароль
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
@@ -49,7 +50,7 @@ func (s *UserService) RegisterUser(req dto.RegisterRequest) (*dto.UserResponse, 
 	}
 
 	// 4. Сохраняем в БД
-	created, err := s.repo.CreateUser(user)
+	created, err := s.repo.CreateUser(ctx, user)
 	if err != nil {
 		return nil, fmt.Errorf("создание пользователя: %w", err)
 	}
@@ -59,9 +60,9 @@ func (s *UserService) RegisterUser(req dto.RegisterRequest) (*dto.UserResponse, 
 }
 
 // LoginUser — вход
-func (s *UserService) LoginUser(req dto.LoginRequest) (*models.User, string, error) {
+func (s *UserService) LoginUser(ctx context.Context, req dto.LoginRequest) (*models.User, string, error) {
 	// 1. Ищем пользователя
-	user, err := s.repo.GetUserByUsername(req.Username)
+	user, err := s.repo.GetUserByUsername(ctx, req.Username)
 	if err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
 			return nil, "", ErrInvalidCreds
@@ -90,8 +91,8 @@ func (s *UserService) LoginUser(req dto.LoginRequest) (*models.User, string, err
 	return user, token, nil
 }
 
-func (s *UserService) GetByID(id int) (*dto.UserResponse, error) {
-	user, err := s.repo.GetUserByID(id)
+func (s *UserService) GetByID(ctx context.Context, id int) (*dto.UserResponse, error) {
+	user, err := s.repo.GetUserByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}

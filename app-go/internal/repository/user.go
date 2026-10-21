@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -24,13 +25,13 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 	return &UserRepository{db: db}
 }
 
-func (r *UserRepository) CreateUser(user *models.User) (*models.User, error) {
+func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) (*models.User, error) {
 	query := `
         INSERT INTO users (email, username, password_hash, first_name, last_name, is_active)
         VALUES (?, ?, ?, ?, ?, ?)
     `
 
-	result, err := r.db.Exec(query,
+	result, err := r.db.ExecContext(ctx, query,
 		user.Email,
 		user.Username,
 		user.PasswordHash,
@@ -58,10 +59,10 @@ func (r *UserRepository) CreateUser(user *models.User) (*models.User, error) {
 
 	user.ID = int(id)
 
-	return r.GetUserByID(user.ID)
+	return r.GetUserByID(ctx, user.ID)
 }
 
-func (r *UserRepository) GetUserByID(id int) (*models.User, error) {
+func (r *UserRepository) GetUserByID(ctx context.Context, id int) (*models.User, error) {
 	query := `
         SELECT id, email, username, password_hash, first_name, last_name, is_active, created_at, updated_at
         FROM users
@@ -69,7 +70,7 @@ func (r *UserRepository) GetUserByID(id int) (*models.User, error) {
     `
 
 	var user models.User
-	err := r.db.QueryRow(query, id).Scan(
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&user.ID,
 		&user.Email,
 		&user.Username,
@@ -91,7 +92,7 @@ func (r *UserRepository) GetUserByID(id int) (*models.User, error) {
 }
 
 // GetUserByEmail — ищет по email
-func (r *UserRepository) GetUserByEmail(email string) (*models.User, error) {
+func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	query := `
         SELECT id, email, username, password_hash, first_name, last_name, is_active, created_at, updated_at
         FROM users
@@ -99,7 +100,7 @@ func (r *UserRepository) GetUserByEmail(email string) (*models.User, error) {
     `
 
 	var user models.User
-	err := r.db.QueryRow(query, email).Scan(
+	err := r.db.QueryRowContext(ctx, query, email).Scan(
 		&user.ID,
 		&user.Email,
 		&user.Username,
@@ -120,7 +121,7 @@ func (r *UserRepository) GetUserByEmail(email string) (*models.User, error) {
 	return &user, nil
 }
 
-func (r *UserRepository) GetUserByUsername(username string) (*models.User, error) {
+func (r *UserRepository) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
 	query := `
         SELECT id, email, username, password_hash, first_name, last_name, is_active, created_at, updated_at
         FROM users
@@ -128,7 +129,7 @@ func (r *UserRepository) GetUserByUsername(username string) (*models.User, error
     `
 
 	var user models.User
-	err := r.db.QueryRow(query, username).Scan(
+	err := r.db.QueryRowContext(ctx, query, username).Scan(
 		&user.ID,
 		&user.Email,
 		&user.Username,
@@ -149,11 +150,11 @@ func (r *UserRepository) GetUserByUsername(username string) (*models.User, error
 	return &user, nil
 }
 
-func (r *UserRepository) UserExists(email, username string) (bool, error) {
+func (r *UserRepository) UserExists(ctx context.Context, email, username string) (bool, error) {
 	query := `SELECT COUNT(*) FROM users WHERE email = ? OR username = ?`
 
 	var count int
-	if err := r.db.QueryRow(query, email, username).Scan(&count); err != nil {
+	if err := r.db.QueryRowContext(ctx, query, email, username).Scan(&count); err != nil {
 		return false, fmt.Errorf("проверка существования: %w", err)
 	}
 
