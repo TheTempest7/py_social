@@ -11,6 +11,8 @@ type Config struct {
 	JWTLifetime    time.Duration
 	CookieSecure   bool
 	CookieSameSite string
+	DBPath         string
+	MigrationsPath string
 }
 
 // Глобальная переменная, чтобы не прокидывать её везде
@@ -22,6 +24,8 @@ func Load() {
 		JWTLifetime:    time.Duration(getEnvInt("JWT_LIFETIME_HOURS", 24)) * time.Hour,
 		CookieSecure:   getEnvBool("COOKIE_SECURE", false),
 		CookieSameSite: getEnv("COOKIE_SAMESITE", "Lax"),
+		DBPath:         getEnv("DB_PATH", "data/social_app.db"),
+		MigrationsPath: getEnv("MIGRATIONS_PATH", "migrations"),
 	}
 }
 

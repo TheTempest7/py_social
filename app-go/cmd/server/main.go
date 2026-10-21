@@ -11,9 +11,15 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"log"
+	"log/slog"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	_ "github.com/TheTempest7/social_network/app-go/docs"
@@ -40,17 +46,17 @@ func main() {
 
 	config.Load()
 
-	db, err := database.ConnectDB("data/social_app.db")
+	db, err := database.ConnectDB(config.AppConfig.DBPath)
 	if err != nil {
-		fmt.Println("❌ Ошибка подключения к БД:", err)
-		return
+		slog.Error("❌ Ошибка подключения к БД:", "error", err)
+		os.Exit(1)
 	}
 	defer db.Close()
 	fmt.Println("✅ Подключено к SQLite")
 
-	if err := database.RunMigrations("data/social_app.db", "migrations"); err != nil {
-		fmt.Println("❌ Ошибка миграций:", err)
-		return
+	if err := database.RunMigrations(config.AppConfig.DBPath, config.AppConfig.MigrationsPath); err != nil {
+		slog.Error("❌ Ошибка миграций:", "error", err)
+		os.Exit(1)
 	}
 
 	// 👇 Создаём слои
@@ -102,7 +108,35 @@ func main() {
 		})
 	})
 	fmt.Println("🚀 Сервер запущен на http://localhost:8080")
-	if err := http.ListenAndServe(":8080", r); err != nil {
-		fmt.Println("Ошибка сервера:", err)
+
+	srv := &http.Server{
+		Addr:              ":8080",
+		Handler:           r,
+		ReadHeaderTimeout: 5 * time.Second, // защита от Slowloris
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	// Запускаем сервер в отдельной горутине
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Ошибка сервера: %v", err)
+		}
+	}()
+
+	// Ждём сигнал
+	<-ctx.Done()
+
+	// Даём 10 секунд на завершение текущих запросов
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Fatalf("Ошибка shutdown: %v", err)
+	}
+	fmt.Println("Сервер остановлен")
 }
