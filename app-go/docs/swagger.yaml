@@ -1,5 +1,11 @@
 basePath: /
 definitions:
+  dto.ErrorResponse:
+    properties:
+      error:
+        example: текст ошибки
+        type: string
+    type: object
   dto.LoginRequest:
     properties:
       password:
@@ -77,13 +83,12 @@ paths:
         "401":
           description: Неверный логин или пароль
           schema:
-            type: string
+            $ref: '#/definitions/dto.ErrorResponse'
       summary: Вход
       tags:
       - auth
   /api/auth/logout:
     post:
-      description: Удаляет cookie с токеном
       produces:
       - application/json
       responses:
@@ -109,7 +114,7 @@ paths:
         "401":
           description: Не авторизован
           schema:
-            type: string
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Текущий пользователь
@@ -137,11 +142,11 @@ paths:
         "400":
           description: Невалидный JSON
           schema:
-            type: string
+            $ref: '#/definitions/dto.ErrorResponse'
         "409":
           description: Email или username заняты
           schema:
-            type: string
+            $ref: '#/definitions/dto.ErrorResponse'
       summary: Регистрация
       tags:
       - auth

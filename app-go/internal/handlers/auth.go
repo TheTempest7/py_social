@@ -31,8 +31,8 @@ func NewAuthHandler(userService *services.UserService) *AuthHandler {
 // @Produce      json
 // @Param        request body dto.RegisterRequest true "Данные регистрации"
 // @Success      201 {object} dto.UserResponse
-// @Failure      400 {string} string "Невалидный JSON"
-// @Failure      409 {string} string "Email или username заняты"
+// @Failure      400 {object} dto.ErrorResponse "Невалидный JSON"
+// @Failure      409 {object} dto.ErrorResponse "Email или username заняты"
 // @Router       /api/auth/register [post]
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	// 1. Читаем JSON
@@ -90,7 +90,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 // @Produce      json
 // @Param        request body dto.LoginRequest true "Данные логина"
 // @Success      200 {object} map[string]string
-// @Failure      401 {string} string "Неверный логин или пароль"
+// @Failure      401 {object} dto.ErrorResponse "Неверный логин или пароль"
 // @Router       /api/auth/login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	// 1. Читаем JSON
@@ -141,7 +141,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 // Logout — выход
 // @Summary      Выход
-// @Description  Удаляет cookie с токеном
 // @Tags         auth
 // @Produce      json
 // @Success      200 {object} map[string]string
@@ -179,7 +178,7 @@ func respondError(w http.ResponseWriter, status int, message string) {
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200 {object} dto.UserResponse
-// @Failure      401 {string} string "Не авторизован"
+// @Failure      401 {object} dto.ErrorResponse "Не авторизован"
 // @Router       /api/auth/me [get]
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	// Достаём claims из context
