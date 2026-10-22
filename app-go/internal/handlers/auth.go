@@ -47,8 +47,16 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	input := services.RegisterInput{
+		Email:     req.Email,
+		Username:  req.Username,
+		Password:  req.Password,
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+	}
+
 	// 2. Вызываем сервис
-	user, err := h.userService.RegisterUser(r.Context(), req)
+	user, err := h.userService.RegisterUser(r.Context(), &input)
 	if err != nil {
 		switch {
 		case errors.Is(err, repository.ErrEmailTaken):
@@ -61,8 +69,17 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 👇 Конвертируем UserOutput в dto.UserResponse для ответа
+	resp := dto.UserResponse{
+		ID:        user.ID,
+		Email:     user.Email,
+		Username:  user.Username,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		IsActive:  user.IsActive,
+	}
 	// 3. Отвечаем
-	respondJSON(w, http.StatusCreated, user)
+	respondJSON(w, http.StatusCreated, resp)
 }
 
 // Login — вход
@@ -88,8 +105,13 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	input := services.LoginInput{
+		Username: req.Username,
+		Password: req.Password,
+	}
+
 	// 2. Вызываем сервис
-	user, token, err := h.userService.LoginUser(r.Context(), req)
+	user, token, err := h.userService.LoginUser(r.Context(), input)
 	if err != nil {
 		if errors.Is(err, services.ErrInvalidCreds) {
 			respondError(w, http.StatusUnauthorized, "неверный логин или пароль")

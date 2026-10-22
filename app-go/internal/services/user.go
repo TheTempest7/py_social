@@ -6,32 +6,38 @@ import (
 	"fmt"
 
 	"github.com/TheTempest7/social_network/app-go/internal/auth"
-	"github.com/TheTempest7/social_network/app-go/internal/dto"
 	"github.com/TheTempest7/social_network/app-go/internal/models"
 	"github.com/TheTempest7/social_network/app-go/internal/repository"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
+type UserRepository interface {
+	CreateUser(ctx context.Context, user *models.User) (*models.User, error)
+	GetUserByID(ctx context.Context, id int) (*models.User, error)
+	GetUserByUsername(ctx context.Context, username string) (*models.User, error)
+}
+
+type UserService struct {
+	repo UserRepository
+}
+
 // Ошибки сервиса
 var (
 	ErrInvalidCreds    = errors.New("неверный логин или пароль")
 	ErrPasswordTooLong = errors.New("пароль слишком длинный (макс 72 байта)")
+	ErrUserInactive    = errors.New("пользователь неактивен")
 )
 
-type UserService struct {
-	repo *repository.UserRepository
-}
-
-func NewUserService(repo *repository.UserRepository) *UserService {
+func NewUserService(repo UserRepository) *UserService {
 	return &UserService{repo: repo}
 }
 
 // RegisterUser — регистрация нового пользователя
-func (s *UserService) RegisterUser(ctx context.Context, req dto.RegisterRequest) (*dto.UserResponse, error) {
+func (s *UserService) RegisterUser(ctx context.Context, input *RegisterInput) (*UserOutput, error) {
 
 	// 2. Хешируем пароль
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
 		if errors.Is(err, bcrypt.ErrPasswordTooLong) {
 			return nil, ErrPasswordTooLong // 👈 своя ошибка
@@ -41,11 +47,11 @@ func (s *UserService) RegisterUser(ctx context.Context, req dto.RegisterRequest)
 
 	// 3. Создаём модель
 	user := &models.User{
-		Email:        req.Email,
-		Username:     req.Username,
+		Email:        input.Email,
+		Username:     input.Username,
 		PasswordHash: string(hash),
-		FirstName:    req.FirstName,
-		LastName:     req.LastName,
+		FirstName:    input.FirstName,
+		LastName:     input.LastName,
 		IsActive:     true,
 	}
 
@@ -56,13 +62,13 @@ func (s *UserService) RegisterUser(ctx context.Context, req dto.RegisterRequest)
 	}
 
 	// 5. Возвращаем DTO (без пароля)
-	return toUserResponse(created), nil
+	return toUserOutput(created), nil
 }
 
 // LoginUser — вход
-func (s *UserService) LoginUser(ctx context.Context, req dto.LoginRequest) (*models.User, string, error) {
+func (s *UserService) LoginUser(ctx context.Context, input LoginInput) (*models.User, string, error) {
 	// 1. Ищем пользователя
-	user, err := s.repo.GetUserByUsername(ctx, req.Username)
+	user, err := s.repo.GetUserByUsername(ctx, input.Username)
 	if err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
 			return nil, "", ErrInvalidCreds
@@ -73,14 +79,14 @@ func (s *UserService) LoginUser(ctx context.Context, req dto.LoginRequest) (*mod
 	// 2. Проверяем пароль
 	if err := bcrypt.CompareHashAndPassword(
 		[]byte(user.PasswordHash),
-		[]byte(req.Password),
+		[]byte(input.Password),
 	); err != nil {
 		return nil, "", ErrInvalidCreds
 	}
 
 	// 3. Проверяем, что активен
 	if !user.IsActive {
-		return nil, "", errors.New("пользователь неактивен")
+		return nil, "", ErrUserInactive
 	}
 
 	token, err := auth.GenerateToken(user.ID, user.Username)
@@ -91,17 +97,17 @@ func (s *UserService) LoginUser(ctx context.Context, req dto.LoginRequest) (*mod
 	return user, token, nil
 }
 
-func (s *UserService) GetByID(ctx context.Context, id int) (*dto.UserResponse, error) {
+func (s *UserService) GetByID(ctx context.Context, id int) (*UserOutput, error) {
 	user, err := s.repo.GetUserByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	return toUserResponse(user), nil
+	return toUserOutput(user), nil
 }
 
-// toUserResponse — конвертер модели в DTO
-func toUserResponse(u *models.User) *dto.UserResponse {
-	return &dto.UserResponse{
+// toUserOutput — конвертер из модели БД в бизнес-структуру
+func toUserOutput(u *models.User) *UserOutput {
+	return &UserOutput{
 		ID:        u.ID,
 		Email:     u.Email,
 		Username:  u.Username,

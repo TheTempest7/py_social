@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/TheTempest7/social_network/app-go/internal/config"
-	"github.com/TheTempest7/social_network/app-go/internal/dto"
 	"github.com/TheTempest7/social_network/app-go/internal/repository"
 	"github.com/TheTempest7/social_network/app-go/internal/services"
 
@@ -61,7 +60,7 @@ func TestRegisterUserRaceCondition(t *testing.T) {
 		mu        sync.Mutex
 	)
 
-	req := dto.RegisterRequest{
+	req := &services.RegisterInput{
 		Email:    "race@test.com",
 		Username: "race",
 		Password: "12345678",
@@ -105,7 +104,7 @@ func TestLoginUserSuccess(t *testing.T) {
 	svc := setupService(t)
 
 	// Сначала регистрируем
-	regReq := dto.RegisterRequest{
+	regReq := &services.RegisterInput{
 		Email:    "login@test.com",
 		Username: "loginuser",
 		Password: "12345678",
@@ -116,7 +115,7 @@ func TestLoginUserSuccess(t *testing.T) {
 	}
 
 	// Теперь логинимся
-	user, token, err := svc.LoginUser(context.Background(), dto.LoginRequest{
+	user, token, err := svc.LoginUser(context.Background(), services.LoginInput{
 		Username: "loginuser",
 		Password: "12345678",
 	})
@@ -138,7 +137,7 @@ func TestLoginUserSuccess(t *testing.T) {
 func TestLoginUserWrongPassword(t *testing.T) {
 	svc := setupService(t)
 
-	_, err := svc.RegisterUser(context.Background(), dto.RegisterRequest{
+	_, err := svc.RegisterUser(context.Background(), &services.RegisterInput{
 		Email:    "wrong@test.com",
 		Username: "wrongpass",
 		Password: "correct123",
@@ -147,7 +146,7 @@ func TestLoginUserWrongPassword(t *testing.T) {
 		t.Fatalf("регистрация: %v", err)
 	}
 
-	_, _, err = svc.LoginUser(context.Background(), dto.LoginRequest{
+	_, _, err = svc.LoginUser(context.Background(), services.LoginInput{
 		Username: "wrongpass",
 		Password: "wrong123",
 	})
@@ -160,7 +159,7 @@ func TestLoginUserWrongPassword(t *testing.T) {
 func TestGetByIDSuccess(t *testing.T) {
 	svc := setupService(t)
 
-	created, err := svc.RegisterUser(context.Background(), dto.RegisterRequest{
+	created, err := svc.RegisterUser(context.Background(), &services.RegisterInput{
 		Email:    "getbyid@test.com",
 		Username: "getbyid",
 		Password: "12345678",
