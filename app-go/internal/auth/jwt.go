@@ -2,10 +2,9 @@ package auth
 
 import (
 	"errors"
-	"os"
-	"strconv"
 	"time"
 
+	"github.com/TheTempest7/social_network/app-go/internal/config"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -19,42 +18,26 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func getSecret() []byte {
-	secret := os.Getenv("JWT_SECRET")
-	if secret == "" {
-		secret = "default-fallback-secret" // для разработки
-	}
-	return []byte(secret)
-}
-
-func getLifetime() time.Duration {
-	hours, err := strconv.Atoi(os.Getenv("JWT_LIFETIME_HOURS"))
-	if err != nil || hours <= 0 {
-		hours = 24
-	}
-	return time.Duration(hours) * time.Hour
-}
-
 // GenerateToken — создаёт JWT
 func GenerateToken(userID int, username string) (string, error) {
 	claims := Claims{
 		UserID:   userID,
 		Username: username,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(getLifetime())),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(config.AppConfig.JWTLifetime)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(getSecret()))
+	return token.SignedString([]byte(config.AppConfig.JWTSecret))
 }
 
 // ParseToken — проверяет и разбирает JWT
 func ParseToken(tokenString string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(getSecret()), nil
-	})
+		return []byte(config.AppConfig.JWTSecret), nil // 👈 Берем из конфига
+	}, jwt.WithValidMethods([]string{"HS256"}))
 	if err != nil {
 		return nil, ErrInvalidToken
 	}

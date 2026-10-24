@@ -1,5 +1,11 @@
 basePath: /
 definitions:
+  dto.ErrorResponse:
+    properties:
+      error:
+        example: текст ошибки
+        type: string
+    type: object
   dto.LoginRequest:
     properties:
       password:
@@ -19,6 +25,7 @@ definitions:
       last_name:
         type: string
       password:
+        maxLength: 72
         minLength: 8
         type: string
       username:
@@ -76,13 +83,12 @@ paths:
         "401":
           description: Неверный логин или пароль
           schema:
-            type: string
+            $ref: '#/definitions/dto.ErrorResponse'
       summary: Вход
       tags:
       - auth
   /api/auth/logout:
     post:
-      description: Удаляет cookie с токеном
       produces:
       - application/json
       responses:
@@ -93,6 +99,25 @@ paths:
               type: string
             type: object
       summary: Выход
+      tags:
+      - auth
+  /api/auth/me:
+    get:
+      description: Возвращает данные авторизованного пользователя
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Текущий пользователь
       tags:
       - auth
   /api/auth/register:
@@ -117,12 +142,17 @@ paths:
         "400":
           description: Невалидный JSON
           schema:
-            type: string
+            $ref: '#/definitions/dto.ErrorResponse'
         "409":
           description: Email или username заняты
           schema:
-            type: string
+            $ref: '#/definitions/dto.ErrorResponse'
       summary: Регистрация
       tags:
       - auth
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

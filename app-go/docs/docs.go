@@ -52,7 +52,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Неверный логин или пароль",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -60,7 +60,6 @@ const docTemplate = `{
         },
         "/api/auth/logout": {
             "post": {
-                "description": "Удаляет cookie с токеном",
                 "produces": [
                     "application/json"
                 ],
@@ -76,6 +75,37 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает данные авторизованного пользователя",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Текущий пользователь",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.UserResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -115,13 +145,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Невалидный JSON",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Email или username заняты",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -129,6 +159,15 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "dto.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "текст ошибки"
+                }
+            }
+        },
         "dto.LoginRequest": {
             "type": "object",
             "required": [
@@ -163,6 +202,7 @@ const docTemplate = `{
                 },
                 "password": {
                     "type": "string",
+                    "maxLength": 72,
                     "minLength": 8
                 },
                 "username": {
@@ -194,6 +234,13 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }`

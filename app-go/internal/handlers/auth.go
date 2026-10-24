@@ -5,8 +5,14 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/TheTempest7/social_network/app-go/internal/auth"
+	"github.com/TheTempest7/social_network/app-go/internal/config"
 	"github.com/TheTempest7/social_network/app-go/internal/dto"
+	"github.com/TheTempest7/social_network/app-go/internal/middleware"
+	"github.com/TheTempest7/social_network/app-go/internal/repository"
 	"github.com/TheTempest7/social_network/app-go/internal/services"
+	"github.com/TheTempest7/social_network/app-go/internal/utils"
+	"github.com/TheTempest7/social_network/app-go/internal/validators"
 )
 
 type AuthHandler struct {
@@ -25,8 +31,8 @@ func NewAuthHandler(userService *services.UserService) *AuthHandler {
 // @Produce      json
 // @Param        request body dto.RegisterRequest true "Данные регистрации"
 // @Success      201 {object} dto.UserResponse
-// @Failure      400 {string} string "Невалидный JSON"
-// @Failure      409 {string} string "Email или username заняты"
+// @Failure      400 {object} dto.ErrorResponse "Невалидный JSON"
+// @Failure      409 {object} dto.ErrorResponse "Email или username заняты"
 // @Router       /api/auth/register [post]
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	// 1. Читаем JSON
@@ -36,13 +42,26 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := validators.Validate(req); err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	input := services.RegisterInput{
+		Email:     req.Email,
+		Username:  req.Username,
+		Password:  req.Password,
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+	}
+
 	// 2. Вызываем сервис
-	user, err := h.userService.RegisterUser(req)
+	user, err := h.userService.RegisterUser(r.Context(), &input)
 	if err != nil {
 		switch {
-		case errors.Is(err, services.ErrEmailTaken):
+		case errors.Is(err, repository.ErrEmailTaken):
 			respondError(w, http.StatusConflict, "email уже занят")
-		case errors.Is(err, services.ErrUsernameTaken):
+		case errors.Is(err, repository.ErrUsernameTaken):
 			respondError(w, http.StatusConflict, "username уже занят")
 		default:
 			respondError(w, http.StatusInternalServerError, "ошибка регистрации")
@@ -50,8 +69,17 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 👇 Конвертируем UserOutput в dto.UserResponse для ответа
+	resp := dto.UserResponse{
+		ID:        user.ID,
+		Email:     user.Email,
+		Username:  user.Username,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		IsActive:  user.IsActive,
+	}
 	// 3. Отвечаем
-	respondJSON(w, http.StatusCreated, user)
+	respondJSON(w, http.StatusCreated, resp)
 }
 
 // Login — вход
@@ -62,7 +90,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 // @Produce      json
 // @Param        request body dto.LoginRequest true "Данные логина"
 // @Success      200 {object} map[string]string
-// @Failure      401 {string} string "Неверный логин или пароль"
+// @Failure      401 {object} dto.ErrorResponse "Неверный логин или пароль"
 // @Router       /api/auth/login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	// 1. Читаем JSON
@@ -72,8 +100,18 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := validators.Validate(req); err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	input := services.LoginInput{
+		Username: req.Username,
+		Password: req.Password,
+	}
+
 	// 2. Вызываем сервис
-	user, token, err := h.userService.LoginUser(req)
+	user, token, err := h.userService.LoginUser(r.Context(), input)
 	if err != nil {
 		if errors.Is(err, services.ErrInvalidCreds) {
 			respondError(w, http.StatusUnauthorized, "неверный логин или пароль")
@@ -87,10 +125,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Name:     "access_token",
 		Value:    token,
 		Path:     "/",
-		MaxAge:   24 * 60 * 60, // 24 часа
-		HttpOnly: true,         // JS не прочитает
-		Secure:   false,        // true в проде (HTTPS)
-		SameSite: http.SameSiteLaxMode,
+		MaxAge:   int(config.AppConfig.JWTLifetime.Seconds()),
+		HttpOnly: true, // JS не прочитает
+		Secure:   config.AppConfig.CookieSecure,
+		SameSite: utils.ParseSameSite(config.AppConfig.CookieSameSite),
 	})
 
 	// 3. Пока отвечаем просто "ок" (JWT добавим позже)
@@ -103,7 +141,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 // Logout — выход
 // @Summary      Выход
-// @Description  Удаляет cookie с токеном
 // @Tags         auth
 // @Produce      json
 // @Success      200 {object} map[string]string
@@ -132,4 +169,31 @@ func respondJSON(w http.ResponseWriter, status int, data any) {
 // respondError — пишет JSON-ошибку
 func respondError(w http.ResponseWriter, status int, message string) {
 	respondJSON(w, status, map[string]string{"error": message})
+}
+
+// Me — текущий пользователь
+// @Summary      Текущий пользователь
+// @Description  Возвращает данные авторизованного пользователя
+// @Tags         auth
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {object} dto.UserResponse
+// @Failure      401 {object} dto.ErrorResponse "Не авторизован"
+// @Router       /api/auth/me [get]
+func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
+	// Достаём claims из context
+	claims, ok := r.Context().Value(middleware.UserContextKey).(*auth.Claims)
+	if !ok {
+		respondError(w, http.StatusUnauthorized, "не авторизован")
+		return
+	}
+
+	// Ищем пользователя в БД
+	user, err := h.userService.GetByID(r.Context(), claims.UserID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "пользователь не найден")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, user)
 }
