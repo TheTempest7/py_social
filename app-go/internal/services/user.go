@@ -71,6 +71,11 @@ func (s *UserService) LoginUser(ctx context.Context, input LoginInput) (*models.
 	user, err := s.repo.GetUserByUsername(ctx, input.Username)
 	if err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
+			bcrypt.CompareHashAndPassword(
+				[]byte("$2a$10$dummy.hash.to.waste.time.for.timing.attack"),
+				[]byte(input.Password),
+			)
+
 			return nil, "", ErrInvalidCreds
 		}
 		return nil, "", fmt.Errorf("поиск пользователя: %w", err)

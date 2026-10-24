@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/TheTempest7/social_network/app-go/internal/auth"
 	"github.com/TheTempest7/social_network/app-go/internal/config"
@@ -48,11 +49,11 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	input := services.RegisterInput{
-		Email:     req.Email,
-		Username:  req.Username,
+		Email:     strings.ToLower(strings.Trim(req.Email, " ")),
+		Username:  strings.ToLower(strings.Trim(req.Username, " ")),
 		Password:  req.Password,
-		FirstName: req.FirstName,
-		LastName:  req.LastName,
+		FirstName: strings.Trim(req.FirstName, " "),
+		LastName:  strings.Trim(req.LastName, " "),
 	}
 
 	// 2. Вызываем сервис

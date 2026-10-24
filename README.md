@@ -3,7 +3,7 @@
 ## Быстрый старт
 
 ```bash
-cd ~/job/go/social_network/app-go
+cd ~/social_network/app-go
 go run ./cmd/server
 
 
@@ -29,7 +29,7 @@ source ~/.bashrc
 
 Генерация Swagger docs
 
-cd ~/job/go/social_network
+cd ~/social_network
 swag init -g app-go/cmd/server/main.go -o app-go/docs
 
 
@@ -59,7 +59,7 @@ app-go/
     ## Работа с БД (SQLite)
 
 # 1. Перейти в app-go
-cd ~/job/go/social_network/app-go
+cd ~/social_network/app-go
 
 # 2. Проверить БД есть
 ls -la data/social_app.db
@@ -104,7 +104,7 @@ SELECT * FROM users;
 
 ```bash
 # 1. Перейти в папку модуля (где лежит go.mod)
-cd ~/job/go/social_network
+cd ~/social_network
 
 # 2. Почистить зависимости
 go mod tidy
