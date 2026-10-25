@@ -13,7 +13,7 @@ type contextKey string
 const UserContextKey contextKey = "user"
 
 // RequireAuth — проверяет JWT из Cookie ИЛИ Authorization header
-func RequireAuth(next http.Handler) http.Handler {
+func RequireAuth(blacklist *auth.Blacklist, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var tokenString string
 
@@ -33,6 +33,11 @@ func RequireAuth(next http.Handler) http.Handler {
 		// 3. Нет токена — 401
 		if tokenString == "" {
 			http.Error(w, `{"error":"не авторизован"}`, http.StatusUnauthorized)
+			return
+		}
+
+		if blacklist.IsBlacklisted(r.Context(), tokenString) {
+			http.Error(w, `{"error":"токен отозван"}`, http.StatusUnauthorized)
 			return
 		}
 

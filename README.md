@@ -1,131 +1,52 @@
 # Social Network — Go Backend
 
-## Быстрый старт
+REST API для социальной сети на Go.
+
+## 🚀 Быстрый старт
 
 ```bash
+# 1. Перейти в папку бэкенда
 cd ./app-go
+
+# 2. Запустить Redis (в отдельном терминале)
+docker run -d --name my-redis -p 6379:6379 redis:alpine
+
+# 3. Запустить сервер
 go run ./cmd/server
 
 
+====================================================================================
 
-Установка зависимостей
+docker compose up --build
 
-
-go get github.com/go-chi/chi/v5
-go get github.com/go-chi/cors
-go get modernc.org/sqlite
-go get golang.org/x/crypto/bcrypt
-go get github.com/golang-jwt/jwt/v5
-go get github.com/swaggo/http-swagger
-go get github.com/swaggo/files
+docker compose up -d
 
 
-
-Установка swag CLI
-go install github.com/swaggo/swag/cmd/swag@latest
-echo 'export PATH=$PATH:$(go env GOPATH)/bin' >> ~/.bashrc
-source ~/.bashrc
+docker compose logs -f app
 
 
-Генерация Swagger docs
+docker compose down
+====================================================================================
 
-cd ~/social_network
+Redis используется для черного списка (blacklist) отозванных JWT-токенов при логауте.
+
+docker run -d --name my-redis -p 6379:6379 redis:alpine
+docker ps
+docker exec -it my-redis redis-cli
+# Внутри:
+keys *
+exit
+docker stop my-redis
+docker rm my-redis
+====================================================================================
+Генерация Swagger:
+cd ..
 swag init -g app-go/cmd/server/main.go -o app-go/docs
 
 
 
 
-Структура проекта
-
-app-go/
-├── cmd/server/main.go              ← точка входа
-├── internal/
-│   ├── config/                     ← конфиг
-│   ├── database/                   ← подключение к БД + миграции
-│   ├── models/                     ← модели (User)
-│   ├── dto/                        ← структуры запросов/ответов
-│   ├── repository/                 ← работа с БД (SQL)
-│   ├── services/                   ← бизнес-логика
-│   ├── handlers/                   ← HTTP-ручки
-│   └── middleware/                 ← мидлвари
-├── migrations/                     ← SQL-миграции
-├── docs/                           ← Swagger (генерируется)
-└── data/
-    └── social_app.db               ← SQLite БД
-
-
-
-
-    ## Работа с БД (SQLite)
-
-# 1. Перейти в app-go
-cd ~/social_network/app-go
-
-# 2. Проверить БД есть
-ls -la data/social_app.db
-
-# 3. Открыть
-sqlite3 data/social_app.db
-
-# Внутри — по одной команде:
-.tables
-.schema users
-.mode column
-.headers on
-SELECT * FROM users;
-
-# Выйти
-.quit
-
-
-
-
-## Управление зависимостями (go.mod)
-
-### Что такое `go.mod` и `go.sum`
-
-- **`go.mod`** — список **прямых** и **косвенных** зависимостей проекта
-- **`go.sum`** — хеши пакетов для проверки целостности (не редактируется вручную!)
-
-### Что делает `go mod tidy`
-
-**Проходит по всем `.go` файлам, читает импорты и синхронизирует `go.mod`:**
-
-| Что делает | Пример |
-|------------|--------|
-| **Добавляет недостающие пакеты** | Импорт есть, в `go.mod` нет → добавит |
-| **Удаляет лишние пакеты** | В `go.mod` есть, в коде не используется → удалит |
-| **Помечает `// indirect`** | Пакет не импортируется напрямую, но нужен другой зависимости |
-| **Обновляет `go.sum`** | Синхронизирует хеши |
-
-**⚠️ `go mod tidy` НЕ трогает `.go` файлы — только `go.mod` и `go.sum`.**
-
-### Как запускать
-
-```bash
-# 1. Перейти в папку модуля (где лежит go.mod)
-cd ~/social_network
-
-# 2. Почистить зависимости
-go mod tidy
-
-# 3. Проверить, что всё компилируется
-go build ./...
-
-
-
-
-
-
-**Имя файла:** `X_test.go` — рядом с `X.go`.
-
-**Имя теста:** `TestЧто_Когда_Ожидание` — `TestRegisterUser_RaceCondition`.
-
-**Пакет:** `package services_test` — снаружи (тестируем публичный API).
-
-### Запуск
-
-```bash
+====================================================================================
 # Все тесты
 go test ./...
 
@@ -133,10 +54,56 @@ go test ./...
 go test -v ./...
 
 # Конкретный тест
-go test -run TestRegisterUser_RaceCondition ./app-go/internal/services/...
+go test -run TestRegisterUserRaceCondition ./app-go/internal/services/user/...
 
 # С покрытием
 go test -cover ./...
 
 # С детектором гонок
 go test -race ./...
+
+====================================================================================
+
+cd ./app-go
+sqlite3 data/social_app.db
+
+# Внутри (по одной команде):
+.tables
+.schema users
+.mode column
+.headers on
+SELECT * FROM users;
+.quit
+
+====================================================================================
+
+# Установка Go-зависимостей
+go mod download
+
+# Установка swag CLI (для генерации Swagger)
+go install github.com/swaggo/swag/cmd/swag@latest
+echo 'export PATH=$PATH:$(go env GOPATH)/bin' >> ~/.bashrc
+source ~/.bashrc
+
+cd ..
+go mod tidy
+go build ./...
+
+====================================================================================
+
+app-go/
+├── cmd/server/main.go              # Точка входа (запуск сервера)
+├── internal/
+│   ├── config/                     # Конфигурация (.env)
+│   ├── database/                   # Подключение к БД + миграции
+│   ├── models/                     # Модели БД (User)
+│   ├── dto/                        # Структуры запросов/ответов
+│   ├── repository/                 # Работа с БД (SQL)
+│   ├── services/                   # Бизнес-логика (user, profile)
+│   ├── handlers/                   # HTTP-ручки
+│   ├── middleware/                 # Мидлвари (JWT, CORS)
+│   └── utils/                      # Утилиты (хелперы)
+├── migrations/                     # SQL-миграции (golang-migrate)
+├── docs/                           # Swagger (генерируется)
+└── data/
+    └── social_app.db               # SQLite БД

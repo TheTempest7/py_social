@@ -13,6 +13,8 @@ type Config struct {
 	CookieSameSite string
 	DBPath         string
 	MigrationsPath string
+	RedisAddr      string
+	RedisPassword  string
 }
 
 // Глобальная переменная, чтобы не прокидывать её везде
@@ -26,6 +28,8 @@ func Load() {
 		CookieSameSite: getEnv("COOKIE_SAMESITE", "Lax"),
 		DBPath:         getEnv("DB_PATH", "data/social_app.db"),
 		MigrationsPath: getEnv("MIGRATIONS_PATH", "migrations"),
+		RedisAddr:      getEnv("REDIS_ADDR", "localhost:6379"),
+		RedisPassword:  getEnv("REDIS_PASSWORD", ""),
 	}
 }
 

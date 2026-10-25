@@ -1,0 +1,30 @@
+services:
+  # 1. Твой Go-сервер
+  app:
+    build: 
+      context: .                    # 👈 Контекст = корень проекта
+      dockerfile: app-go/Dockerfile # 👈 Путь к Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      # Переопределяем путь к БД и миграциям, чтобы они работали внутри контейнера
+      - DB_PATH=data/social_app.db
+      - MIGRATIONS_PATH=migrations
+      - JWT_SECRET=super-secret-key
+      - REDIS_URL=redis:6379  # 👈 ссылка на сервис redis (по имени)
+    depends_on:
+      - redis      
+    volumes:
+      - ./app-go/data:/app/data         # ждем старта редиса
+
+  # 2. Redis
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data   # сохраняем данные Redis (чтобы не терять blacklist при рестарте)
+
+# Объявляем том для Redis
+volumes:
+  redis_data:
