@@ -14,7 +14,20 @@ docker run -d --name my-redis -p 6379:6379 redis:alpine
 # 3. Запустить сервер
 go run ./cmd/server
 
+
 ====================================================================================
+
+docker compose up --build
+
+docker compose up -d
+
+
+docker compose logs -f app
+
+
+docker compose down
+====================================================================================
+
 Redis используется для черного списка (blacklist) отозванных JWT-токенов при логауте.
 
 docker run -d --name my-redis -p 6379:6379 redis:alpine
