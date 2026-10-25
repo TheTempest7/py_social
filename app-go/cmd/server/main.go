@@ -101,14 +101,6 @@ func main() {
 		})
 	})
 
-	// 	// Создаем blacklist с подключением к Redis
-	// blacklist := auth.NewBlacklist(config.AppConfig.RedisAddr, config.AppConfig.RedisPassword)
-
-	// // Передаем в хендлер и middleware
-	// authHandler := handlers.NewAuthHandler(userService, blacklist)
-
-	// ...
-
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 	r.Route("/api/auth", func(r chi.Router) {
 		// Публичные
@@ -125,7 +117,6 @@ func main() {
 		})
 
 		r.Get("/profile", profileHandler.Profile)
-		// ...
 	})
 	fmt.Println("🚀 Сервер запущен на http://localhost:8080")
 
