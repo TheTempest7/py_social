@@ -6,21 +6,19 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/TheTempest7/social_network/app-go/internal/auth"
 	"github.com/TheTempest7/social_network/app-go/internal/config"
 	"github.com/TheTempest7/social_network/app-go/internal/dto"
-	"github.com/TheTempest7/social_network/app-go/internal/middleware"
 	"github.com/TheTempest7/social_network/app-go/internal/repository"
-	"github.com/TheTempest7/social_network/app-go/internal/services"
+	services_user "github.com/TheTempest7/social_network/app-go/internal/services/user"
 	"github.com/TheTempest7/social_network/app-go/internal/utils"
 	"github.com/TheTempest7/social_network/app-go/internal/validators"
 )
 
 type AuthHandler struct {
-	userService *services.UserService
+	userService *services_user.UserService
 }
 
-func NewAuthHandler(userService *services.UserService) *AuthHandler {
+func NewAuthHandler(userService *services_user.UserService) *AuthHandler {
 	return &AuthHandler{userService: userService}
 }
 
@@ -48,7 +46,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	input := services.RegisterInput{
+	input := services_user.RegisterInput{
 		Email:     strings.ToLower(strings.Trim(req.Email, " ")),
 		Username:  strings.ToLower(strings.Trim(req.Username, " ")),
 		Password:  req.Password,
@@ -106,7 +104,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	input := services.LoginInput{
+	input := services_user.LoginInput{
 		Username: req.Username,
 		Password: req.Password,
 	}
@@ -114,7 +112,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	// 2. Вызываем сервис
 	user, token, err := h.userService.LoginUser(r.Context(), input)
 	if err != nil {
-		if errors.Is(err, services.ErrInvalidCreds) {
+		if errors.Is(err, services_user.ErrInvalidCreds) {
 			respondError(w, http.StatusUnauthorized, "неверный логин или пароль")
 			return
 		}
@@ -170,31 +168,4 @@ func respondJSON(w http.ResponseWriter, status int, data any) {
 // respondError — пишет JSON-ошибку
 func respondError(w http.ResponseWriter, status int, message string) {
 	respondJSON(w, status, map[string]string{"error": message})
-}
-
-// Me — текущий пользователь
-// @Summary      Текущий пользователь
-// @Description  Возвращает данные авторизованного пользователя
-// @Tags         auth
-// @Produce      json
-// @Security     BearerAuth
-// @Success      200 {object} dto.UserResponse
-// @Failure      401 {object} dto.ErrorResponse "Не авторизован"
-// @Router       /api/auth/me [get]
-func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
-	// Достаём claims из context
-	claims, ok := r.Context().Value(middleware.UserContextKey).(*auth.Claims)
-	if !ok {
-		respondError(w, http.StatusUnauthorized, "не авторизован")
-		return
-	}
-
-	// Ищем пользователя в БД
-	user, err := h.userService.GetByID(r.Context(), claims.UserID)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "пользователь не найден")
-		return
-	}
-
-	respondJSON(w, http.StatusOK, user)
 }

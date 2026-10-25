@@ -101,7 +101,7 @@ paths:
       summary: Выход
       tags:
       - auth
-  /api/auth/me:
+  /api/auth/profile:
     get:
       description: Возвращает данные авторизованного пользователя
       produces:
@@ -119,7 +119,7 @@ paths:
       - BearerAuth: []
       summary: Текущий пользователь
       tags:
-      - auth
+      - users
   /api/auth/register:
     post:
       consumes:

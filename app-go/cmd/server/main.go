@@ -28,7 +28,9 @@ import (
 	"github.com/TheTempest7/social_network/app-go/internal/handlers"
 	appmw "github.com/TheTempest7/social_network/app-go/internal/middleware"
 	"github.com/TheTempest7/social_network/app-go/internal/repository"
-	"github.com/TheTempest7/social_network/app-go/internal/services"
+	"github.com/TheTempest7/social_network/app-go/internal/services/profile"
+	"github.com/TheTempest7/social_network/app-go/internal/services/user"
+
 	"github.com/joho/godotenv"
 
 	"github.com/go-chi/chi/v5"
@@ -61,8 +63,10 @@ func main() {
 
 	// 👇 Создаём слои
 	repo := repository.NewUserRepository(db)
-	userService := services.NewUserService(repo)
+	userService := user.NewUserService(repo)
 	authHandler := handlers.NewAuthHandler(userService)
+	profileService := profile.NewProfileService(repo)
+	profileHandler := handlers.NewProfileHandler(profileService)
 
 	r := chi.NewRouter()
 
@@ -101,11 +105,12 @@ func main() {
 		r.Post("/login", authHandler.Login)
 		r.Post("/logout", authHandler.Logout)
 
-		// 👇 Защищённые — только с валидным JWT
-		r.Group(func(r chi.Router) {
-			r.Use(appmw.RequireAuth)
-			r.Get("/me", authHandler.Me)
-		})
+	})
+
+	// 2. Группа пользователей (защищённая)
+	r.Route("/api/users", func(r chi.Router) {
+		r.Use(appmw.RequireAuth)                  // защита для всего блока
+		r.Get("/profile", profileHandler.Profile) // 👈 теперь это /api/users/me
 	})
 	fmt.Println("🚀 Сервер запущен на http://localhost:8080")
 

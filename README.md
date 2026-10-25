@@ -3,7 +3,7 @@
 ## Быстрый старт
 
 ```bash
-cd ~/social_network/app-go
+cd ./app-go
 go run ./cmd/server
 
 

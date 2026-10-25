@@ -30,3 +30,12 @@ type AuthResponse struct {
 	Token string       `json:"token"`
 	User  UserResponse `json:"user"`
 }
+
+type UserOutput struct {
+	ID        int
+	Email     string
+	Username  string
+	FirstName string
+	LastName  string
+	IsActive  bool
+}
