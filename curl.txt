@@ -1,0 +1,16 @@
+#!/bin/bash
+
+HOST="http://localhost:8080"
+
+echo "--- 1. Регистрация ---"
+curl -i -X POST http://localhost:8080/api/auth/register -H "Content-Type: application/json" -d '{"email":"test1@example.com","username":"yegor123","password":"password123","first_name":"Yegor","last_name":"Ivanov"}'
+
+echo -e "\n--- 2. Логин (сохраняем куки в файл cookies.txt) ---"
+curl -i -c cookie.txt -X POST http://localhost:8080/api/auth/login -H "Content-Type: application/json" -d '{"username":"yegor123","password":"password123"}'
+
+echo -e "\n--- 3. Получить профиль (используем cookies.txt) ---"
+curl -i -b cookie.txt http://localhost:8080/api/users/profile
+
+
+echo -e "\n--- 4. Выход (удаляем куки) ---"
+curl -i -b cookie.txt -X POST http://localhost:8080/api/auth/logout

@@ -80,7 +80,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/auth/me": {
+        "/api/auth/profile": {
             "get": {
                 "security": [
                     {
@@ -92,7 +92,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "auth"
+                    "users"
                 ],
                 "summary": "Текущий пользователь",
                 "responses": {

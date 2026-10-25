@@ -1,4 +1,4 @@
-package services
+package user // 👈 было package services
 
 // RegisterInput — то, что принимает сервис для регистрации.
 // Это не DTO из HTTP-слоя, это бизнес-сущность.

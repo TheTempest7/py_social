@@ -74,7 +74,7 @@
                 }
             }
         },
-        "/api/auth/me": {
+        "/api/auth/profile": {
             "get": {
                 "security": [
                     {
@@ -86,7 +86,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "auth"
+                    "users"
                 ],
                 "summary": "Текущий пользователь",
                 "responses": {

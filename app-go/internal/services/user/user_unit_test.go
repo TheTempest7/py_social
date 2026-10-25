@@ -1,4 +1,4 @@
-package services_test
+package user_test
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/TheTempest7/social_network/app-go/internal/config"
 	"github.com/TheTempest7/social_network/app-go/internal/models"
 	"github.com/TheTempest7/social_network/app-go/internal/repository"
-	"github.com/TheTempest7/social_network/app-go/internal/services"
+	"github.com/TheTempest7/social_network/app-go/internal/services/user"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -39,9 +39,9 @@ func TestRegisterUser_EmailTaken_Unit(t *testing.T) {
 			return nil, repository.ErrEmailTaken
 		},
 	}
-	svc := services.NewUserService(mock)
+	svc := user.NewUserService(mock)
 
-	input := &services.RegisterInput{
+	input := &user.RegisterInput{
 		Email:    "taken@test.com",
 		Username: "user",
 		Password: "12345678",
@@ -63,9 +63,9 @@ func TestRegisterUser_Success_Unit(t *testing.T) {
 			return user, nil
 		},
 	}
-	svc := services.NewUserService(mock)
+	svc := user.NewUserService(mock)
 
-	input := &services.RegisterInput{
+	input := &user.RegisterInput{
 		Email:    "new@test.com",
 		Username: "newuser",
 		Password: "12345678",
@@ -100,9 +100,9 @@ func TestLoginUser_Success_Unit(t *testing.T) {
 		},
 	}
 
-	svc := services.NewUserService(mock)
+	svc := user.NewUserService(mock)
 
-	input := services.LoginInput{
+	input := user.LoginInput{
 		Username: "testuser",
 		Password: "12345678",
 	}
@@ -140,9 +140,9 @@ func TestLoginUser_Inactive_Unit(t *testing.T) {
 		},
 	}
 
-	svc := services.NewUserService(mock)
+	svc := user.NewUserService(mock)
 
-	input := services.LoginInput{
+	input := user.LoginInput{
 		Username: "testuser",
 		Password: "12345678",
 	}
@@ -150,7 +150,7 @@ func TestLoginUser_Inactive_Unit(t *testing.T) {
 	_, _, err := svc.LoginUser(context.Background(), input)
 
 	// Проверяем, что сервис вернул именно ошибку неактивности
-	if !errors.Is(err, services.ErrUserInactive) {
+	if !errors.Is(err, user.ErrUserInactive) {
 		t.Errorf("ожидали ErrUserInactive, получили %v", err)
 	}
 }

@@ -1,25 +1,19 @@
-package services
-
+package user // 👈 было package services
 import (
 	"context"
 	"errors"
 	"fmt"
 
 	"github.com/TheTempest7/social_network/app-go/internal/auth"
+	"github.com/TheTempest7/social_network/app-go/internal/dto"
 	"github.com/TheTempest7/social_network/app-go/internal/models"
 	"github.com/TheTempest7/social_network/app-go/internal/repository"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
-type UserRepository interface {
-	CreateUser(ctx context.Context, user *models.User) (*models.User, error)
-	GetUserByID(ctx context.Context, id int) (*models.User, error)
-	GetUserByUsername(ctx context.Context, username string) (*models.User, error)
-}
-
 type UserService struct {
-	repo UserRepository
+	repo repository.UserRepo
 }
 
 // Ошибки сервиса
@@ -29,12 +23,12 @@ var (
 	ErrUserInactive    = errors.New("пользователь неактивен")
 )
 
-func NewUserService(repo UserRepository) *UserService {
+func NewUserService(repo repository.UserRepo) *UserService {
 	return &UserService{repo: repo}
 }
 
 // RegisterUser — регистрация нового пользователя
-func (s *UserService) RegisterUser(ctx context.Context, input *RegisterInput) (*UserOutput, error) {
+func (s *UserService) RegisterUser(ctx context.Context, input *RegisterInput) (*dto.UserOutput, error) {
 
 	// 2. Хешируем пароль
 	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
@@ -62,7 +56,14 @@ func (s *UserService) RegisterUser(ctx context.Context, input *RegisterInput) (*
 	}
 
 	// 5. Возвращаем DTO (без пароля)
-	return toUserOutput(created), nil
+	return &dto.UserOutput{
+		ID:        created.ID,
+		Email:     created.Email,
+		Username:  created.Username,
+		FirstName: created.FirstName,
+		LastName:  created.LastName,
+		IsActive:  created.IsActive,
+	}, nil
 }
 
 // LoginUser — вход
@@ -100,24 +101,4 @@ func (s *UserService) LoginUser(ctx context.Context, input LoginInput) (*models.
 	}
 
 	return user, token, nil
-}
-
-func (s *UserService) GetByID(ctx context.Context, id int) (*UserOutput, error) {
-	user, err := s.repo.GetUserByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	return toUserOutput(user), nil
-}
-
-// toUserOutput — конвертер из модели БД в бизнес-структуру
-func toUserOutput(u *models.User) *UserOutput {
-	return &UserOutput{
-		ID:        u.ID,
-		Email:     u.Email,
-		Username:  u.Username,
-		FirstName: u.FirstName,
-		LastName:  u.LastName,
-		IsActive:  u.IsActive,
-	}
 }
