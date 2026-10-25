@@ -23,6 +23,7 @@ import (
 	"time"
 
 	_ "github.com/TheTempest7/social_network/app-go/docs"
+	"github.com/TheTempest7/social_network/app-go/internal/auth"
 	"github.com/TheTempest7/social_network/app-go/internal/config"
 	"github.com/TheTempest7/social_network/app-go/internal/database"
 	"github.com/TheTempest7/social_network/app-go/internal/handlers"
@@ -64,8 +65,10 @@ func main() {
 	// 👇 Создаём слои
 	repo := repository.NewUserRepository(db)
 	userService := user.NewUserService(repo)
-	authHandler := handlers.NewAuthHandler(userService)
+	blacklist := auth.NewBlacklist(config.AppConfig.RedisAddr, config.AppConfig.RedisPassword)
+	authHandler := handlers.NewAuthHandler(userService, blacklist)
 	profileService := profile.NewProfileService(repo)
+
 	profileHandler := handlers.NewProfileHandler(profileService)
 
 	r := chi.NewRouter()
@@ -98,6 +101,14 @@ func main() {
 		})
 	})
 
+	// 	// Создаем blacklist с подключением к Redis
+	// blacklist := auth.NewBlacklist(config.AppConfig.RedisAddr, config.AppConfig.RedisPassword)
+
+	// // Передаем в хендлер и middleware
+	// authHandler := handlers.NewAuthHandler(userService, blacklist)
+
+	// ...
+
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 	r.Route("/api/auth", func(r chi.Router) {
 		// Публичные
@@ -109,8 +120,12 @@ func main() {
 
 	// 2. Группа пользователей (защищённая)
 	r.Route("/api/users", func(r chi.Router) {
-		r.Use(appmw.RequireAuth)                  // защита для всего блока
-		r.Get("/profile", profileHandler.Profile) // 👈 теперь это /api/users/me
+		r.Use(func(next http.Handler) http.Handler {
+			return appmw.RequireAuth(blacklist, next)
+		})
+
+		r.Get("/profile", profileHandler.Profile)
+		// ...
 	})
 	fmt.Println("🚀 Сервер запущен на http://localhost:8080")
 

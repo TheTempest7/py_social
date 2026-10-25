@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/TheTempest7/social_network/app-go/internal/auth"
 	"github.com/TheTempest7/social_network/app-go/internal/config"
 	"github.com/TheTempest7/social_network/app-go/internal/dto"
 	"github.com/TheTempest7/social_network/app-go/internal/repository"
@@ -16,10 +17,11 @@ import (
 
 type AuthHandler struct {
 	userService *services_user.UserService
+	blacklist   *auth.Blacklist
 }
 
-func NewAuthHandler(userService *services_user.UserService) *AuthHandler {
-	return &AuthHandler{userService: userService}
+func NewAuthHandler(userService *services_user.UserService, blacklist *auth.Blacklist) *AuthHandler {
+	return &AuthHandler{userService: userService, blacklist: blacklist}
 }
 
 // Register — регистрация нового пользователя
@@ -146,6 +148,14 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 // @Router       /api/auth/logout [post]
 // Logout — удаляет Cookie с токеном
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	// 👇 1. Достаем токен из куки
+	cookie, err := r.Cookie("access_token")
+	if err == nil && cookie.Value != "" {
+		// 👇 2. Добавляем в Redis (черный список) на 24 часа
+		// Время жизни берем из конфига (или ставим 24*time.Hour)
+		_ = h.blacklist.Add(r.Context(), cookie.Value, config.AppConfig.JWTLifetime)
+	}
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     "access_token",
 		Value:    "",

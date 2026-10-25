@@ -19,7 +19,7 @@ func NewProfileHandler(profileService *profile.ProfileService) *ProfileHandler {
 // Profile — текущий пользователь
 // @Summary      Текущий пользователь
 // @Description  Возвращает данные авторизованного пользователя
-// @Tags         users
+// @Tags         auth
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200 {object} dto.UserResponse
