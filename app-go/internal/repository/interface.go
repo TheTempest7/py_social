@@ -11,4 +11,5 @@ type UserRepo interface {
 	CreateUser(ctx context.Context, user *models.User) (*models.User, error)
 	GetUserByID(ctx context.Context, id int) (*models.User, error)
 	GetUserByUsername(ctx context.Context, username string) (*models.User, error)
+	UpdateProfile(ctx context.Context, newData *models.User) (*models.User, error)
 }

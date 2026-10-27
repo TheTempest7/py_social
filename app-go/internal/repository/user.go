@@ -48,6 +48,22 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 	return &UserRepository{db: db}
 }
 
+func (r *UserRepository) UpdateProfile(ctx context.Context, user *models.User) (*models.User, error) {
+	query := `
+		UPDATE users 
+		SET first_name = ?, last_name = ?, updated_at = CURRENT_TIMESTAMP 
+		WHERE id = ?
+	`
+
+	_, err := r.db.ExecContext(ctx, query, user.FirstName, user.LastName, user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("обновление профиля: %w", err)
+	}
+
+	// Возвращаем обновленного пользователя
+	return r.GetUserByID(ctx, user.ID)
+}
+
 func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) (*models.User, error) {
 	query := `
         INSERT INTO users (email, username, password_hash, first_name, last_name, is_active)

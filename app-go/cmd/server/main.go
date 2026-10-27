@@ -117,6 +117,7 @@ func main() {
 		})
 
 		r.Get("/profile", profileHandler.Profile)
+		r.Put("/profile", profileHandler.PutProfile)
 	})
 	fmt.Println("🚀 Сервер запущен на http://localhost:8080")
 

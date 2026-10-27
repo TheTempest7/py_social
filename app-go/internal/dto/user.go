@@ -39,3 +39,8 @@ type UserOutput struct {
 	LastName  string
 	IsActive  bool
 }
+
+type UpdateProfileRequest struct {
+	FirstName *string `json:"first_name,omitempty"`
+	LastName  *string `json:"last_name,omitempty"`
+}

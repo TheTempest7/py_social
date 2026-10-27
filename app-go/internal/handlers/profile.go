@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/TheTempest7/social_network/app-go/internal/auth"
+	"github.com/TheTempest7/social_network/app-go/internal/dto"
 	"github.com/TheTempest7/social_network/app-go/internal/middleware"
 	"github.com/TheTempest7/social_network/app-go/internal/services/profile"
 )
@@ -41,4 +43,34 @@ func (h *ProfileHandler) Profile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusOK, user)
+}
+
+func (h *ProfileHandler) PutProfile(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value(middleware.UserContextKey).(*auth.Claims)
+
+	if !ok {
+		respondError(w, http.StatusUnauthorized, "не авторизован")
+		return
+	}
+
+	var req dto.UpdateProfileRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "невалидный JSON")
+		return
+	}
+
+	input := profile.UpdateProfileInput{
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+	}
+
+	user, err := h.profileService.UpdateProfile(r.Context(), claims.UserID, input)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "ошибка обновления профиля")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, user)
+
 }
