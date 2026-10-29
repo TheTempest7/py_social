@@ -8,7 +8,7 @@ import (
 
 	"github.com/TheTempest7/social_network/app-go/internal/repository"
 	"github.com/TheTempest7/social_network/app-go/internal/services/user"
-	testutils "github.com/TheTempest7/social_network/app-go/internal/test_utils"
+	testutils "github.com/TheTempest7/social_network/app-go/internal/testutils"
 
 	_ "modernc.org/sqlite"
 )

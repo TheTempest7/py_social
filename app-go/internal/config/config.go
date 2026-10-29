@@ -15,6 +15,13 @@ type Config struct {
 	MigrationsPath string
 	RedisAddr      string
 	RedisPassword  string
+
+	// MinIO
+	MinioEndpoint  string
+	MinioAccessKey string
+	MinioSecretKey string
+	MinioBucket    string
+	MinioUseSSL    bool
 }
 
 // Глобальная переменная, чтобы не прокидывать её везде
@@ -22,14 +29,23 @@ var AppConfig *Config
 
 func Load() {
 	AppConfig = &Config{
-		JWTSecret:      getEnv("JWT_SECRET", "secret"),
-		JWTLifetime:    time.Duration(getEnvInt("JWT_LIFETIME_HOURS", 24)) * time.Hour,
+		JWTSecret:   getEnv("JWT_SECRET", "secret"),
+		JWTLifetime: time.Duration(getEnvInt("JWT_LIFETIME_HOURS", 24)) * time.Hour,
+
 		CookieSecure:   getEnvBool("COOKIE_SECURE", false),
 		CookieSameSite: getEnv("COOKIE_SAMESITE", "Lax"),
+
 		DBPath:         getEnv("DB_PATH", "data/social_app.db"),
 		MigrationsPath: getEnv("MIGRATIONS_PATH", "migrations"),
-		RedisAddr:      getEnv("REDIS_ADDR", "localhost:6379"),
-		RedisPassword:  getEnv("REDIS_PASSWORD", ""),
+
+		RedisAddr:     getEnv("REDIS_ADDR", "localhost:6379"),
+		RedisPassword: getEnv("REDIS_PASSWORD", ""),
+
+		MinioEndpoint:  getEnv("MINIO_ENDPOINT", "localhost:9000"),
+		MinioAccessKey: getEnv("MINIO_ACCESS_KEY", "minioadmin"),
+		MinioSecretKey: getEnv("MINIO_SECRET_KEY", "minioadmin"),
+		MinioBucket:    getEnv("MINIO_BUCKET", "avatars"),
+		MinioUseSSL:    getEnvBool("MINIO_USE_SSL", false),
 	}
 }
 

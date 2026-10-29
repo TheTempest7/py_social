@@ -10,7 +10,7 @@ import (
 	"github.com/TheTempest7/social_network/app-go/internal/models"
 )
 
-const queryColumns = "id, email, username, password_hash, first_name, last_name, is_active, created_at, updated_at"
+const queryColumns = "id, email, username, password_hash, first_name, last_name, avatar_url, is_active, created_at, updated_at"
 
 // Ошибки репозитория
 var (
@@ -29,7 +29,7 @@ func scanUser(row *sql.Row) (*models.User, error) {
 	// 👇 Вызываем Scan на объекте *sql.Row
 	err := row.Scan(
 		&user.ID, &user.Email, &user.Username, &user.PasswordHash,
-		&user.FirstName, &user.LastName, &user.IsActive,
+		&user.FirstName, &user.LastName, &user.AvatarURL, &user.IsActive,
 		&user.CreatedAt, &user.UpdatedAt,
 	)
 
@@ -51,17 +51,35 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 func (r *UserRepository) UpdateProfile(ctx context.Context, user *models.User) (*models.User, error) {
 	query := `
 		UPDATE users 
-		SET first_name = ?, last_name = ?, updated_at = CURRENT_TIMESTAMP 
+		SET first_name = ?, last_name = ?, username = ?, updated_at = CURRENT_TIMESTAMP 
 		WHERE id = ?
 	`
 
-	_, err := r.db.ExecContext(ctx, query, user.FirstName, user.LastName, user.ID)
+	_, err := r.db.ExecContext(ctx, query, user.FirstName, user.LastName, user.Username, user.ID)
 	if err != nil {
 		return nil, fmt.Errorf("обновление профиля: %w", err)
 	}
 
 	// Возвращаем обновленного пользователя
 	return r.GetUserByID(ctx, user.ID)
+}
+
+func (r *UserRepository) UpdateAvatar(ctx context.Context, id int, url string) (*models.User, error) {
+	query := `UPDATE users SET avatar_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+	fmt.Println(url)
+	res, err := r.db.ExecContext(ctx, query, url, id)
+	fmt.Println(res)
+	if err != nil {
+		return nil, fmt.Errorf("обновление аватара: %w", err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return nil, fmt.Errorf("rows affected: %w", err)
+	}
+	if rows == 0 {
+		return nil, ErrUserNotFound
+	}
+	return r.GetUserByID(ctx, id)
 }
 
 func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) (*models.User, error) {

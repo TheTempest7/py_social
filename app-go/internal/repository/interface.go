@@ -12,4 +12,5 @@ type UserRepo interface {
 	GetUserByID(ctx context.Context, id int) (*models.User, error)
 	GetUserByUsername(ctx context.Context, username string) (*models.User, error)
 	UpdateProfile(ctx context.Context, newData *models.User) (*models.User, error)
+	UpdateAvatar(ctx context.Context, id int, url string) (*models.User, error)
 }

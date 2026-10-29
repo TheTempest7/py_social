@@ -2,20 +2,27 @@ services:
   # 1. Твой Go-сервер
   app:
     build: 
-      context: .                    # 👈 Контекст = корень проекта
-      dockerfile: app-go/Dockerfile # 👈 Путь к Dockerfile
+      context: .                    
+      dockerfile: app-go/Dockerfile 
     ports:
       - "8080:8080"
+    restart: unless-stopped 
+    # 👇 Подключаем твой .env файл, чтобы сервер знал ключи
+    env_file:
+      - ./app-go/.env
     environment:
-      # Переопределяем путь к БД и миграциям, чтобы они работали внутри контейнера
+      # Переопределяем пути для работы внутри контейнера
       - DB_PATH=data/social_app.db
       - MIGRATIONS_PATH=migrations
-      - JWT_SECRET=super-secret-key
-      - REDIS_URL=redis:6379  # 👈 ссылка на сервис redis (по имени)
+      
+      # ВАЖНО: Внутри докер-сети обращаемся к сервисам по их ИМЕНАМ, а не localhost
+      - REDIS_ADDR=redis:6379  
+      - MINIO_ENDPOINT=minio:9000
     depends_on:
-      - redis      
+      - redis
+      - minio
     volumes:
-      - ./app-go/data:/app/data         # ждем старта редиса
+      - ./app-go/data:/app/data         
 
   # 2. Redis
   redis:
@@ -23,8 +30,22 @@ services:
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/data   # сохраняем данные Redis (чтобы не терять blacklist при рестарте)
+      - redis_data:/data   
 
-# Объявляем том для Redis
+  # 3. MinIO
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"       # API
+      - "9001:9001"       # Веб-консоль (http://localhost:9001)
+    environment:
+      # Берем логин и пароль из твоего корневого .env (где MINIO_ACCESS_KEY)
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+
 volumes:
   redis_data:
+  minio_data:

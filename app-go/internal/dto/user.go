@@ -32,15 +32,17 @@ type AuthResponse struct {
 }
 
 type UserOutput struct {
-	ID        int
-	Email     string
-	Username  string
-	FirstName string
-	LastName  string
-	IsActive  bool
+	ID        int     `json:"id"`
+	Email     string  `json:"email"`
+	Username  string  `json:"username"`
+	FirstName string  `json:"first_name"`
+	LastName  string  `json:"last_name"`
+	IsActive  bool    `json:"is_active"`
+	AvatarURL *string `json:"avatar_url"`
 }
 
 type UpdateProfileRequest struct {
+	Username  *string `json:"username,omitempty"`
 	FirstName *string `json:"first_name,omitempty"`
 	LastName  *string `json:"last_name,omitempty"`
 }

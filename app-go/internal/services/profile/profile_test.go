@@ -14,9 +14,10 @@ func TestGetByIDSuccess(t *testing.T) {
 	// 👇 Получаем готовый репозиторий с БД
 	repo := testutils.SetupDB(t)
 
+	storage := testutils.SetupStorage(t)
 	// Инициализируем сервисы
 	userSvc := user.NewUserService(repo)
-	profileSvc := profile.NewProfileService(repo)
+	profileSvc := profile.NewProfileService(repo, storage)
 	// 1. Создаем юзера через UserService
 	created, err := userSvc.RegisterUser(context.Background(), &user.RegisterInput{
 		Email:    "getbyid@test.com",
@@ -44,7 +45,8 @@ func TestGetByIDSuccess(t *testing.T) {
 func TestGetByIDNotFound(t *testing.T) {
 	// 👇 Получаем готовый репозиторий с БД
 	repo := testutils.SetupDB(t)
-	profileSvc := profile.NewProfileService(repo)
+	storage := testutils.SetupStorage(t)
+	profileSvc := profile.NewProfileService(repo, storage)
 
 	_, err := profileSvc.GetByID(context.Background(), 99999)
 	if err == nil {
@@ -68,7 +70,8 @@ func TestUpdateProfile_Success_Unit(t *testing.T) {
 		},
 	}
 
-	svc := profile.NewProfileService(mock)
+	storage := testutils.SetupStorage(t)
+	svc := profile.NewProfileService(mock, storage)
 
 	// 2. Даем новые данные (указатели)
 	newName := "New"

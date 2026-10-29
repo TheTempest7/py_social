@@ -12,6 +12,7 @@ type MockUserRepository struct {
 	GetUserByIDFunc       func(ctx context.Context, id int) (*models.User, error)
 	GetUserByUsernameFunc func(ctx context.Context, username string) (*models.User, error)
 	UpdateProfileFunc     func(ctx context.Context, user *models.User) (*models.User, error)
+	UpdateAvatarFunc      func(ctx context.Context, id int, url string) (*models.User, error)
 }
 
 func (m *MockUserRepository) CreateUser(ctx context.Context, user *models.User) (*models.User, error) {
@@ -28,4 +29,8 @@ func (m *MockUserRepository) GetUserByUsername(ctx context.Context, username str
 
 func (m *MockUserRepository) UpdateProfile(ctx context.Context, user *models.User) (*models.User, error) {
 	return m.UpdateProfileFunc(ctx, user)
+}
+
+func (m *MockUserRepository) UpdateAvatar(ctx context.Context, id int, url string) (*models.User, error) {
+	return m.UpdateAvatarFunc(ctx, id, url)
 }

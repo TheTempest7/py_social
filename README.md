@@ -26,6 +26,8 @@ docker compose logs -f app
 
 
 docker compose down
+
+docker compose logs -f app
 ====================================================================================
 
 Redis используется для черного списка (blacklist) отозванных JWT-токенов при логауте.
@@ -38,6 +40,7 @@ keys *
 exit
 docker stop my-redis
 docker rm my-redis
+docker compose up -d minio
 ====================================================================================
 Генерация Swagger:
 cd ..
