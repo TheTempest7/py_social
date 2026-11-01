@@ -19,6 +19,10 @@ type ProfileHandler struct {
 	profileService *profile.ProfileService
 }
 
+type PresignAvatarRequest struct {
+	Filename string `json:"filename"`
+}
+
 func NewProfileHandler(profileService *profile.ProfileService) *ProfileHandler {
 	return &ProfileHandler{profileService: profileService}
 }
@@ -140,7 +144,7 @@ func (h *ProfileHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	objectName := fmt.Sprintf("avatars/%d/%s%s", claims.UserID, uuid.NewString(), ext)
+	objectName := fmt.Sprintf("%d/%s%s", claims.UserID, uuid.NewString(), ext)
 	// 8. Грузим в MinIO
 	url, err := h.profileService.UploadAvatar(r.Context(), objectName, file, header.Size)
 	if err != nil {
@@ -152,6 +156,98 @@ func (h *ProfileHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 	out, err := h.profileService.SetAvatar(r.Context(), claims.UserID, url)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "не удалось сохранить аватар")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, out)
+}
+
+// PresignAvatar POST /api/users/avatar/presign
+// @Summary      Получить ссылку на загрузку аватара
+// @Description  1. Выдача ссылки.
+// @Tags         profile
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        body body PresignAvatarRequest true "Имя файла"
+// @Success      200 {object} dto.UserOutput
+// @Failure      400 {string} string "bad request"
+// @Failure      401 {string} string "unauthorized"
+// @Failure      413 {string} string "file too large"
+// @Router       /api/users/avatar/presign [post]
+func (h *ProfileHandler) PresignAvatar(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value(middleware.UserContextKey).(*auth.Claims)
+	if !ok {
+		respondError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	// 1. Коробочка для JSON
+	var req PresignAvatarRequest
+
+	// 2. Читаем JSON из тела запроса и кладем в коробочку
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+
+	// 3. Теперь req.Filename доступен!
+	ext := filepath.Ext(req.Filename)
+	if ext == "" {
+		ext = ".jpg" // на всякий случай
+	}
+	// 4. Проверяем, что это картинка (защита от загрузки .exe)
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".webp" {
+		respondError(w, http.StatusBadRequest, "invalid file extension")
+		return
+	}
+
+	objectName := fmt.Sprintf("%d/%s%s", claims.UserID, uuid.NewString(), ext)
+
+	// Получаем данные для формы (живёт 5 минут)
+	data, err := h.profileService.GenerateAvatarUploadLink(r.Context(), objectName)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "presign failed")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, data) // вернёт {url: "...", fields: {...}}
+}
+
+// 2. Подтверждение загрузки
+type ConfirmAvatarRequest struct {
+	ObjectName string `json:"object_name"`
+}
+
+// PresignAvatar POST /api/users/avatar/confirm
+// @Summary      Подтверждение
+// @Description  1. Подтверждение загрузки фронтом.
+// @Tags         profile
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        body body ConfirmAvatarRequest true "Имя объекта из первого запроса"
+// @Success      200 {object} dto.UserOutput
+// @Failure      400 {string} string "bad request"
+// @Failure      401 {string} string "unauthorized"
+// @Failure      413 {string} string "file too large"
+// @Router       /api/users/avatar/confirm [post]
+func (h *ProfileHandler) ConfirmAvatar(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value(middleware.UserContextKey).(*auth.Claims)
+	if !ok {
+		respondError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	var req ConfirmAvatarRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+
+	// Просим сервис проверить и сохранить
+	out, err := h.profileService.ConfirmAvatarUpload(r.Context(), claims.UserID, req.ObjectName)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "confirm failed")
 		return
 	}
 

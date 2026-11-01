@@ -2,9 +2,10 @@ package profile // 👈 было package services
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"mime/multipart"
+	"strings"
+	"time"
 
 	"github.com/TheTempest7/social_network/app-go/internal/dto"
 	"github.com/TheTempest7/social_network/app-go/internal/models"
@@ -81,12 +82,48 @@ func (s *ProfileService) SetAvatar(
 ) (*dto.UserOutput, error) {
 
 	updated, err := s.repo.UpdateAvatar(ctx, id, url)
-	if prettyJSON, err := json.MarshalIndent(updated, "", "  "); err == nil {
-		fmt.Printf("Updated User:\n%s\n", string(prettyJSON))
-	}
 	if err != nil {
 		return nil, err
 	}
+	return toUserOutput(updated), nil
+}
+
+// GenerateAvatarUploadLink — просто проксирует вызов в storage
+func (s *ProfileService) GenerateAvatarUploadLink(ctx context.Context, objectName string) (*storage.PresignedPostData, error) {
+	// Ссылка живёт 5 минут
+	return s.storage.GeneratePresignedPost(ctx, objectName, 5*time.Minute)
+}
+
+// ConfirmAvatarUpload — проверяет файл в MinIO и сохраняет в БД
+func (s *ProfileService) ConfirmAvatarUpload(ctx context.Context, userID int, objectName string) (*dto.UserOutput, error) {
+	// 1. Проверяем, что файл реально существует и его размер/тип ок
+	info, err := s.storage.StatObject(ctx, objectName)
+	if err != nil {
+		return nil, fmt.Errorf("file not found or invalid: %w", err)
+	}
+
+	// Проверка размера (дублируем, на всякий случай)
+	if info.Size > 5*1024*1024 {
+		_ = s.storage.DeleteObject(ctx, objectName) // удаляем мусор
+		return nil, fmt.Errorf("file too large")
+	}
+
+	// Проверка типа (MinIO вернёт Content-Type, который был указан при загрузке)
+	if !strings.HasPrefix(info.ContentType, "image/") {
+		_ = s.storage.DeleteObject(ctx, objectName)
+		return nil, fmt.Errorf("invalid content type")
+	}
+
+	// 2. Формируем публичный URL (как ты делал раньше)
+	// Внимание: для продакшена лучше генерировать PresignedGet, но пока оставим прямой
+	url := fmt.Sprintf("http://%s/%s/%s", s.storage.GetEndpoint(), s.storage.GetBucket(), objectName)
+
+	// 3. Сохраняем в БД через репозиторий (тот самый UpdateAvatar)
+	updated, err := s.repo.UpdateAvatar(ctx, userID, url)
+	if err != nil {
+		return nil, err
+	}
+
 	return toUserOutput(updated), nil
 }
 

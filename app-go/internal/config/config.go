@@ -22,6 +22,8 @@ type Config struct {
 	MinioSecretKey string
 	MinioBucket    string
 	MinioUseSSL    bool
+	MinioRegion    string
+	MinioPublicURL string
 }
 
 // Глобальная переменная, чтобы не прокидывать её везде
@@ -46,6 +48,8 @@ func Load() {
 		MinioSecretKey: getEnv("MINIO_SECRET_KEY", "minioadmin"),
 		MinioBucket:    getEnv("MINIO_BUCKET", "avatars"),
 		MinioUseSSL:    getEnvBool("MINIO_USE_SSL", false),
+		MinioRegion:    getEnv("MINIO_REGION", "localhost"),
+		MinioPublicURL: getEnv("MINIO_PUBLIC_URL", "localhost:9032"),
 	}
 }
 

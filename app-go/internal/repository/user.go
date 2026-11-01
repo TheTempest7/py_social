@@ -66,9 +66,8 @@ func (r *UserRepository) UpdateProfile(ctx context.Context, user *models.User) (
 
 func (r *UserRepository) UpdateAvatar(ctx context.Context, id int, url string) (*models.User, error) {
 	query := `UPDATE users SET avatar_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
-	fmt.Println(url)
 	res, err := r.db.ExecContext(ctx, query, url, id)
-	fmt.Println(res)
+
 	if err != nil {
 		return nil, fmt.Errorf("обновление аватара: %w", err)
 	}

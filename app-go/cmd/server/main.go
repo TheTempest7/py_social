@@ -69,6 +69,8 @@ func main() {
 		config.AppConfig.MinioSecretKey,
 		config.AppConfig.MinioBucket,
 		config.AppConfig.MinioUseSSL,
+		config.AppConfig.MinioRegion,
+		config.AppConfig.MinioPublicURL,
 	)
 	if err != nil {
 		slog.Error("❌ Ошибка MinIO:", "error", err)
@@ -133,7 +135,11 @@ func main() {
 		r.Get("/profile", profileHandler.Profile)
 		r.Put("/profile", profileHandler.PutProfile)
 		r.Put("/avatar", profileHandler.UploadAvatar)
+
+		r.Post("/avatar/presign", profileHandler.PresignAvatar)
+		r.Post("/avatar/confirm", profileHandler.ConfirmAvatar)
 	})
+
 	fmt.Println("🚀 Сервер запущен на http://localhost:8080")
 
 	srv := &http.Server{
