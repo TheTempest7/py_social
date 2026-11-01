@@ -31,6 +31,7 @@ import (
 	"github.com/TheTempest7/social_network/app-go/internal/repository"
 	"github.com/TheTempest7/social_network/app-go/internal/services/profile"
 	"github.com/TheTempest7/social_network/app-go/internal/services/user"
+	"github.com/TheTempest7/social_network/app-go/internal/storage"
 
 	"github.com/joho/godotenv"
 
@@ -62,12 +63,27 @@ func main() {
 		os.Exit(1)
 	}
 
+	storage, err := storage.NewStorage(
+		config.AppConfig.MinioEndpoint,
+		config.AppConfig.MinioAccessKey,
+		config.AppConfig.MinioSecretKey,
+		config.AppConfig.MinioBucket,
+		config.AppConfig.MinioUseSSL,
+		config.AppConfig.MinioRegion,
+		config.AppConfig.MinioPublicURL,
+	)
+	if err != nil {
+		slog.Error("❌ Ошибка MinIO:", "error", err)
+		os.Exit(1)
+	}
+	fmt.Println("✅ Подключено к MinIO")
+
 	// 👇 Создаём слои
 	repo := repository.NewUserRepository(db)
 	userService := user.NewUserService(repo)
 	blacklist := auth.NewBlacklist(config.AppConfig.RedisAddr, config.AppConfig.RedisPassword)
 	authHandler := handlers.NewAuthHandler(userService, blacklist)
-	profileService := profile.NewProfileService(repo)
+	profileService := profile.NewProfileService(repo, storage)
 
 	profileHandler := handlers.NewProfileHandler(profileService)
 
@@ -117,7 +133,13 @@ func main() {
 		})
 
 		r.Get("/profile", profileHandler.Profile)
+		r.Put("/profile", profileHandler.PutProfile)
+		r.Put("/avatar", profileHandler.UploadAvatar)
+
+		r.Post("/avatar/presign", profileHandler.PresignAvatar)
+		r.Post("/avatar/confirm", profileHandler.ConfirmAvatar)
 	})
+
 	fmt.Println("🚀 Сервер запущен на http://localhost:8080")
 
 	srv := &http.Server{

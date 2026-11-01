@@ -14,3 +14,40 @@ curl -i -b cookie.txt http://localhost:8080/api/users/profile
 
 echo -e "\n--- 4. Выход (удаляем куки) ---"
 curl -i -b cookie.txt -X POST http://localhost:8080/api/auth/logout
+
+5. изменяем данные профиля
+curl -i -b cookie.txt -X PUT http://localhost:8080/api/users/profile -H "Content-Type: application/json" -d '{"first_name":"NewName","last_name":"NewLastName"}'
+
+6. обновление авы
+curl -i -b cookie.txt -X PUT http://localhost:8080/api/users/avatar -F "avatar=@assets/images.jpeg"
+
+7. обновление авы приасайн
+curl -X POST http://localhost:8080/api/users/avatar/presign -b cookie.txt
+
+
+
+curl -s -X POST http://localhost:8080/api/users/avatar/presign \
+  -b cookie.txt \
+  -H "Content-Type: application/json" \
+  -d '{"filename":"my_photo.jpg"}' > presign.json
+
+
+
+URL=$(jq -r .url presign.json)
+KEY=$(jq -r '.fields.key' presign.json)
+
+curl -X POST "$URL" \
+  -F "bucket=avatars" \
+  -F "key=$KEY" \
+  -F "policy=$(jq -r '.fields.policy' presign.json)" \
+  -F "x-amz-algorithm=$(jq -r '.fields["x-amz-algorithm"]' presign.json)" \
+  -F "x-amz-credential=$(jq -r '.fields["x-amz-credential"]' presign.json)" \
+  -F "x-amz-date=$(jq -r '.fields["x-amz-date"]' presign.json)" \
+  -F "x-amz-signature=$(jq -r '.fields["x-amz-signature"]' presign.json)" \
+  -F "Content-Type=image/jpeg" \
+  -F "file=@assets/images.jpeg"
+
+  curl -i -X POST http://localhost:8080/api/users/avatar/confirm \
+  -b cookie.txt \
+  -H "Content-Type: application/json" \
+  -d "{\"object_name\":\"$KEY\"}"

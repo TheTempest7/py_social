@@ -1,0 +1,31 @@
+# .env файлы (секреты!)
+.env
+**/.env
+
+
+# SQLite БД
+*.db
+*.sqlite
+
+# Бинарники
+server
+app-go/server
+
+# Docker volumes (если появятся)
+minio_data/
+redis_data/
+
+# Go
+*.exe
+*.test
+*.out
+
+# IDE
+.idea/
+.vscode/
+
+assets/
+
+
+**cookie.txt
+cookie.txt

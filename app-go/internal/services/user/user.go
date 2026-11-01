@@ -63,6 +63,7 @@ func (s *UserService) RegisterUser(ctx context.Context, input *RegisterInput) (*
 		FirstName: created.FirstName,
 		LastName:  created.LastName,
 		IsActive:  created.IsActive,
+		AvatarURL: created.AvatarURL,
 	}, nil
 }
 
