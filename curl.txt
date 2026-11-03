@@ -25,7 +25,6 @@ curl -i -b cookie.txt -X PUT http://localhost:8080/api/users/avatar -F "avatar=@
 curl -X POST http://localhost:8080/api/users/avatar/presign -b cookie.txt
 
 
-
 curl -s -X POST http://localhost:8080/api/users/avatar/presign \
   -b cookie.txt \
   -H "Content-Type: application/json" \

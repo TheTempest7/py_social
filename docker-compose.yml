@@ -19,8 +19,12 @@ services:
       - REDIS_ADDR=redis:6379  
       - MINIO_ENDPOINT=minio:9000
     depends_on:
-      - redis
-      - minio
+      redis:
+        condition: service_started
+      minio:
+        condition: service_started
+      postgres:
+        condition: service_healthy 
     volumes:
       - ./app-go/data:/app/data         
 
@@ -31,6 +35,11 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data   
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   # 3. MinIO
   minio:
@@ -46,8 +55,25 @@ services:
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
+  
+  postgres:
+    image: postgres:16-alpine
+    ports:
+    - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   redis_data:
   minio_data:
+  pg_data:
   
