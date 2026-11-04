@@ -32,6 +32,7 @@ import (
 	"github.com/TheTempest7/social_network/app-go/internal/services/profile"
 	"github.com/TheTempest7/social_network/app-go/internal/services/user"
 	"github.com/TheTempest7/social_network/app-go/internal/storage"
+	"github.com/TheTempest7/social_network/app-go/internal/workers"
 
 	"github.com/joho/godotenv"
 
@@ -80,7 +81,11 @@ func main() {
 
 	// 👇 Создаём слои
 	repo := repository.NewUserRepository(db)
-	userService := user.NewUserService(repo)
+
+	emailQueue := make(chan workers.EmailTask, 100)
+	workers.StartEmailWorkers(3, emailQueue)
+
+	userService := user.NewUserService(repo, emailQueue)
 	blacklist := auth.NewBlacklist(config.AppConfig.RedisAddr, config.AppConfig.RedisPassword)
 	authHandler := handlers.NewAuthHandler(userService, blacklist)
 	profileService := profile.NewProfileService(repo, storage)
