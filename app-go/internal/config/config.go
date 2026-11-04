@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -24,6 +25,18 @@ type Config struct {
 	MinioUseSSL    bool
 	MinioRegion    string
 	MinioPublicURL string
+
+	DatabaseURL     string
+	DBMaxOpenConns  int
+	DBMaxIdleConns  int
+	ConnMaxLifetime time.Duration
+
+	DBUser     string
+	DBPassword string
+	DBHost     string
+	DBPort     int
+	DBName     string
+	DBSSLMode  string
 }
 
 // Глобальная переменная, чтобы не прокидывать её везде
@@ -37,7 +50,6 @@ func Load() {
 		CookieSecure:   getEnvBool("COOKIE_SECURE", false),
 		CookieSameSite: getEnv("COOKIE_SAMESITE", "Lax"),
 
-		DBPath:         getEnv("DB_PATH", "data/social_app.db"),
 		MigrationsPath: getEnv("MIGRATIONS_PATH", "migrations"),
 
 		RedisAddr:     getEnv("REDIS_ADDR", "localhost:6379"),
@@ -50,7 +62,24 @@ func Load() {
 		MinioUseSSL:    getEnvBool("MINIO_USE_SSL", false),
 		MinioRegion:    getEnv("MINIO_REGION", "localhost"),
 		MinioPublicURL: getEnv("MINIO_PUBLIC_URL", "localhost:9032"),
+
+		DatabaseURL:     getEnv("DATABASE_URL", "postgres://user:password@localhost:5432/social_network?sslmode=disable"),
+		DBMaxOpenConns:  getEnvInt("DB_MAX_OPEN_CONNS", 20),
+		DBMaxIdleConns:  getEnvInt("DB_MAX_IDLE_CONNS", 5),
+		ConnMaxLifetime: getEnvDuration("DB_CONN_MAX_LIFETIME", 5*time.Minute),
+
+		DBUser:     getEnv("DB_USER", "user"),
+		DBPassword: getEnv("DB_PASSWORD", "password"),
+		DBHost:     getEnv("DB_HOST", "localhost"),
+		DBPort:     getEnvInt("DB_PORT", 5432),
+		DBName:     getEnv("DB_NAME", "social_network"),
+		DBSSLMode:  getEnv("DB_SSLMODE", "disable"),
 	}
+}
+
+func (c *Config) DSN() string {
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
+		c.DBUser, c.DBPassword, c.DBHost, c.DBPort, c.DBName, c.DBSSLMode)
 }
 
 func getEnv(key, fallback string) string {
@@ -82,4 +111,16 @@ func getEnvBool(key string, fallback bool) bool {
 		return fallback
 	}
 	return b
+}
+
+func getEnvDuration(key string, fallback time.Duration) time.Duration {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil {
+		return fallback
+	}
+	return d
 }

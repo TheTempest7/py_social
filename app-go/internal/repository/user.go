@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/TheTempest7/social_network/app-go/internal/models"
 )
@@ -51,13 +50,13 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 func (r *UserRepository) UpdateProfile(ctx context.Context, user *models.User) (*models.User, error) {
 	query := `
 		UPDATE users 
-		SET first_name = ?, last_name = ?, username = ?, updated_at = CURRENT_TIMESTAMP 
-		WHERE id = ?
+		SET first_name = $1, last_name = $2, username = $3, updated_at = NOW() 
+		WHERE id = $4
 	`
 
 	_, err := r.db.ExecContext(ctx, query, user.FirstName, user.LastName, user.Username, user.ID)
 	if err != nil {
-		return nil, fmt.Errorf("обновление профиля: %w", err)
+		return nil, ParseDBError(err)
 	}
 
 	// Возвращаем обновленного пользователя
@@ -65,7 +64,7 @@ func (r *UserRepository) UpdateProfile(ctx context.Context, user *models.User) (
 }
 
 func (r *UserRepository) UpdateAvatar(ctx context.Context, id int, url string) (*models.User, error) {
-	query := `UPDATE users SET avatar_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+	query := `UPDATE users SET avatar_url = $1, updated_at = NOW() WHERE id = $2`
 	res, err := r.db.ExecContext(ctx, query, url, id)
 
 	if err != nil {
@@ -84,31 +83,25 @@ func (r *UserRepository) UpdateAvatar(ctx context.Context, id int, url string) (
 func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) (*models.User, error) {
 	query := `
         INSERT INTO users (email, username, password_hash, first_name, last_name, is_active)
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id
     `
 
-	result, err := r.db.ExecContext(ctx, query,
+	var id int
+
+	err := r.db.QueryRowContext(ctx, query,
 		user.Email,
 		user.Username,
 		user.PasswordHash,
 		user.FirstName,
 		user.LastName,
 		user.IsActive,
-	)
+	).Scan(&id)
+
 	if err != nil {
-		errStr := err.Error()
-		if strings.Contains(errStr, "UNIQUE constraint failed") {
-			if strings.Contains(errStr, "users.email") {
-				return nil, ErrEmailTaken
-			}
-			if strings.Contains(errStr, "users.username") {
-				return nil, ErrUsernameTaken
-			}
-		}
-		return nil, fmt.Errorf("создание пользователя: %w", err)
+		return nil, ParseDBError(err)
 	}
 
-	id, err := result.LastInsertId()
 	if err != nil {
 		return nil, fmt.Errorf("получение ID: %w", err)
 	}
@@ -122,7 +115,7 @@ func (r *UserRepository) GetUserByID(ctx context.Context, id int) (*models.User,
 	query := `
         SELECT ` + queryColumns + `
         FROM users
-        WHERE id = ?
+        WHERE id = $1
     `
 
 	row := r.db.QueryRowContext(ctx, query, id)
@@ -135,7 +128,7 @@ func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*mod
 	query := `
         SELECT ` + queryColumns + `
         FROM users
-        WHERE email = ?
+        WHERE email = $1
     `
 
 	row := r.db.QueryRowContext(ctx, query, email)
@@ -147,7 +140,7 @@ func (r *UserRepository) GetUserByUsername(ctx context.Context, username string)
 	query := `
         SELECT ` + queryColumns + `
         FROM users
-        WHERE username = ?
+        WHERE username = $1
     `
 
 	row := r.db.QueryRowContext(ctx, query, username)
@@ -156,7 +149,7 @@ func (r *UserRepository) GetUserByUsername(ctx context.Context, username string)
 }
 
 func (r *UserRepository) UserExists(ctx context.Context, email, username string) (bool, error) {
-	query := `SELECT COUNT(*) FROM users WHERE email = ? OR username = ?`
+	query := `SELECT COUNT(*) FROM users WHERE email = $1 OR username = $2`
 
 	var count int
 	if err := r.db.QueryRowContext(ctx, query, email, username).Scan(&count); err != nil {

@@ -50,15 +50,15 @@ func main() {
 
 	config.Load()
 
-	db, err := database.ConnectDB(config.AppConfig.DBPath)
+	db, err := database.ConnectDB(config.AppConfig.DSN())
 	if err != nil {
 		slog.Error("❌ Ошибка подключения к БД:", "error", err)
 		os.Exit(1)
 	}
 	defer db.Close()
-	fmt.Println("✅ Подключено к SQLite")
+	fmt.Println("✅ Подключено к PostgreSQL")
 
-	if err := database.RunMigrations(config.AppConfig.DBPath, config.AppConfig.MigrationsPath); err != nil {
+	if err := database.RunMigrations(config.AppConfig.DSN(), config.AppConfig.MigrationsPath); err != nil {
 		slog.Error("❌ Ошибка миграций:", "error", err)
 		os.Exit(1)
 	}

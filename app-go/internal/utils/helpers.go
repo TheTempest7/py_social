@@ -1,6 +1,8 @@
 package utils
 
-import "net/http"
+import (
+	"net/http"
+)
 
 func ParseSameSite(s string) http.SameSite {
 	switch s {
