@@ -16,6 +16,7 @@ type Config struct {
 	MigrationsPath string
 	RedisAddr      string
 	RedisPassword  string
+	ServerPort     string
 
 	// MinIO
 	MinioEndpoint  string
@@ -37,6 +38,12 @@ type Config struct {
 	DBPort     int
 	DBName     string
 	DBSSLMode  string
+
+	SMTPHost string
+	SMTPPort int
+	SMTPUser string
+	SMTPPass string
+	SMTPFrom string
 }
 
 // Глобальная переменная, чтобы не прокидывать её везде
@@ -54,6 +61,8 @@ func Load() {
 
 		RedisAddr:     getEnv("REDIS_ADDR", "localhost:6379"),
 		RedisPassword: getEnv("REDIS_PASSWORD", ""),
+
+		ServerPort: getEnv("SERVER_PORT", "8080"),
 
 		MinioEndpoint:  getEnv("MINIO_ENDPOINT", "localhost:9000"),
 		MinioAccessKey: getEnv("MINIO_ACCESS_KEY", "minioadmin"),
@@ -74,6 +83,12 @@ func Load() {
 		DBPort:     getEnvInt("DB_PORT", 5432),
 		DBName:     getEnv("DB_NAME", "social_network"),
 		DBSSLMode:  getEnv("DB_SSLMODE", "disable"),
+
+		SMTPHost: getEnv("SMTP_HOST", "localhost"),
+		SMTPPort: getEnvInt("SMTP_PORT", 1025),
+		SMTPUser: getEnv("SMTP_USER", ""),
+		SMTPPass: getEnv("SMTP_PASS", ""),
+		SMTPFrom: getEnv("SMTP_FROM", "noreply@social.network"),
 	}
 }
 

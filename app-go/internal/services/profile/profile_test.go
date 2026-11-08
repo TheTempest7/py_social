@@ -19,8 +19,6 @@ func TestGetByIDSuccess(t *testing.T) {
 	// Инициализируем сервисы
 	emailQueue := make(chan workers.EmailTask, 100)
 
-	workers.StartEmailWorkers(3, emailQueue)
-
 	userSvc := user.NewUserService(repo, emailQueue)
 	profileSvc := profile.NewProfileService(repo, storage)
 	// 1. Создаем юзера через UserService

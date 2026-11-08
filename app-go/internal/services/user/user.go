@@ -58,18 +58,25 @@ func (s *UserService) RegisterUser(ctx context.Context, input *RegisterInput) (*
 		return nil, fmt.Errorf("создание пользователя: %w", err)
 	}
 
-	select {
-	case s.emailQueue <- workers.EmailTask{
-		To:      created.Email,
-		Subject: "Добро пожаловать!",
-		Body:    "Привет, " + created.Username + "!",
-	}:
-		slog.Info("Задача на отправку email добавлена в очередь")
-	default:
+	emailID, err := s.repo.CreateEmailOutbox(
+		ctx,
+		created.ID,
+		created.Email,
+		"Добро пожаловать!",
+		"Привет, "+created.Username+"!",
+	)
+	if err != nil {
+		// Если не смогли сохранить письмо, логируем ошибку, но юзера не удаляем.
+		slog.Error("Не удалось сохранить email в outbox", "error", err, "user_id", created.ID)
+	} else {
+		select {
+		case s.emailQueue <- workers.EmailTask{ID: emailID}:
+			slog.Info("Задача на отправку email добавлена в очередь")
+		default:
 
-		slog.Warn("Очередь email переполнена, пропускаем отправку")
+			slog.Warn("Очередь email переполнена, пропускаем отправку")
+		}
 	}
-
 	// 5. Возвращаем DTO (без пароля)
 	return &dto.UserOutput{
 		ID:        created.ID,

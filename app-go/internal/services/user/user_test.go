@@ -18,7 +18,6 @@ func TestRegisterUserRaceCondition(t *testing.T) {
 	repo := testutils.SetupDB(t) // 👈 Вся настройка БД в одной строке
 
 	emailQueue := make(chan workers.EmailTask, 100)
-	workers.StartEmailWorkers(3, emailQueue)
 	svc := user.NewUserService(repo, emailQueue)
 
 	const goroutines = 100
@@ -73,7 +72,6 @@ func TestLoginUserSuccess(t *testing.T) {
 	repo := testutils.SetupDB(t)
 
 	emailQueue := make(chan workers.EmailTask, 100)
-	workers.StartEmailWorkers(3, emailQueue)
 	svc := user.NewUserService(repo, emailQueue)
 	// Сначала регистрируем
 	regReq := &user.RegisterInput{
@@ -110,7 +108,6 @@ func TestLoginUserWrongPassword(t *testing.T) {
 	repo := testutils.SetupDB(t)
 
 	emailQueue := make(chan workers.EmailTask, 100)
-	workers.StartEmailWorkers(3, emailQueue)
 	svc := user.NewUserService(repo, emailQueue)
 
 	_, err := svc.RegisterUser(context.Background(), &user.RegisterInput{

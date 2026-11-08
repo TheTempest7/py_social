@@ -13,4 +13,10 @@ type UserRepo interface {
 	GetUserByUsername(ctx context.Context, username string) (*models.User, error)
 	UpdateProfile(ctx context.Context, newData *models.User) (*models.User, error)
 	UpdateAvatar(ctx context.Context, id int, url string) (*models.User, error)
+	// 👇 Новые методы для работы с Email Outbox
+	CreateEmailOutbox(ctx context.Context, userID int, email, subject, body string) (int, error)
+	GetEmailByID(ctx context.Context, id int) (*models.EmailOutbox, error)
+	UpdateEmailStatus(ctx context.Context, id int, status string) error
+	IncrementEmailRetry(ctx context.Context, id int) error
+	GetPendingEmails(ctx context.Context, limit int) ([]models.EmailOutbox, error)
 }

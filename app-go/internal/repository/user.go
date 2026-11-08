@@ -102,10 +102,6 @@ func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) (*mo
 		return nil, ParseDBError(err)
 	}
 
-	if err != nil {
-		return nil, fmt.Errorf("получение ID: %w", err)
-	}
-
 	user.ID = int(id)
 
 	return r.GetUserByID(ctx, user.ID)
@@ -158,3 +154,77 @@ func (r *UserRepository) UserExists(ctx context.Context, email, username string)
 
 	return count > 0, nil
 }
+
+// Outbox
+
+// CreateEmailOutbox — сохраняет письмо в БД (статус pending)
+func (r *UserRepository) CreateEmailOutbox(ctx context.Context, userID int, email, subject, body string) (int, error) {
+	query := `
+		INSERT INTO email_outbox (user_id, email, subject, body, status) 
+		VALUES ($1, $2, $3, $4, 'pending') 
+		RETURNING id
+	`
+	var id int
+	err := r.db.QueryRowContext(ctx, query, userID, email, subject, body).Scan(&id)
+	if err != nil {
+		return 0, fmt.Errorf("создание email_outbox: %w", err)
+	}
+	return id, nil
+}
+
+// GetEmailByID — достает письмо по ID (для воркера)
+func (r *UserRepository) GetEmailByID(ctx context.Context, id int) (*models.EmailOutbox, error) {
+	query := `SELECT id, user_id, email, subject, body, status, retries FROM email_outbox WHERE id = $1`
+	row := r.db.QueryRowContext(ctx, query, id)
+	var e models.EmailOutbox
+	err := row.Scan(&e.ID, &e.UserID, &e.Email, &e.Subject, &e.Body, &e.Status, &e.Retries)
+	if err != nil {
+		return nil, err
+	}
+	return &e, nil
+}
+
+// UpdateEmailStatus — обновляет статус письма после попытки отправки
+func (r *UserRepository) UpdateEmailStatus(ctx context.Context, id int, status string) error {
+	query := `UPDATE email_outbox SET status = $1, updated_at = NOW() WHERE id = $2`
+	_, err := r.db.ExecContext(ctx, query, status, id)
+	return err
+}
+
+// IncrementEmailRetry — увеличивает счетчик попыток и ставит статус failed
+func (r *UserRepository) IncrementEmailRetry(ctx context.Context, id int) error {
+	query := `UPDATE email_outbox SET retries = retries + 1, status = 'failed', updated_at = NOW() WHERE id = $1`
+	_, err := r.db.ExecContext(ctx, query, id)
+	return err
+}
+
+// GetPendingEmails — для Cron-воркера (находит упавшие письма для повторной отправки)
+func (r *UserRepository) GetPendingEmails(ctx context.Context, limit int) ([]models.EmailOutbox, error) {
+	query := `
+		SELECT id, user_id, email, subject, body, status, retries 
+		FROM email_outbox 
+		WHERE (status = 'failed' AND retries < 5) 
+		   OR (status = 'pending' AND created_at < NOW() - INTERVAL '5 minutes')
+		LIMIT $1
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var emails []models.EmailOutbox
+	if rows.Err() == nil {
+		for rows.Next() {
+			var e models.EmailOutbox
+			if err := rows.Scan(&e.ID, &e.UserID, &e.Email, &e.Subject, &e.Body, &e.Status, &e.Retries); err != nil {
+				return nil, err
+			}
+			emails = append(emails, e)
+		}
+	}
+	return emails, nil
+}
+
+// Outbox
