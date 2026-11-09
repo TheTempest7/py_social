@@ -44,6 +44,8 @@ type Config struct {
 	SMTPUser string
 	SMTPPass string
 	SMTPFrom string
+
+	MinioMaxConcurrentRequests int
 }
 
 // Глобальная переменная, чтобы не прокидывать её везде
@@ -89,6 +91,8 @@ func Load() {
 		SMTPUser: getEnv("SMTP_USER", ""),
 		SMTPPass: getEnv("SMTP_PASS", ""),
 		SMTPFrom: getEnv("SMTP_FROM", "noreply@social.network"),
+
+		MinioMaxConcurrentRequests: getEnvInt("MINIO_MAX_CONCURRENT_REQUESTS", 12),
 	}
 }
 

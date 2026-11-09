@@ -16,10 +16,11 @@ type Storage struct {
 	client    *minio.Client
 	bucket    string
 	publicURL string
+	sem       chan struct{}
 }
 
 // NewStorage — подключается к MinIO
-func NewStorage(endpoint, accessKey, secretKey, bucket string, useSSL bool, region string, publicURL string) (*Storage, error) {
+func NewStorage(endpoint, accessKey, secretKey, bucket string, useSSL bool, region string, publicURL string, maxCon int) (*Storage, error) {
 	client, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
 		Secure: useSSL,
@@ -47,12 +48,17 @@ func NewStorage(endpoint, accessKey, secretKey, bucket string, useSSL bool, regi
 		client:    client,
 		bucket:    bucket,
 		publicURL: publicURL,
+		sem:       make(chan struct{}, maxCon),
 	}, nil
 }
 
 // UploadFile — загружает файл в MinIO и возвращает его URL
 func (s *Storage) UploadFile(ctx context.Context, file multipart.File, filename string, size int64) (string, error) {
 	// Загружаем файл
+
+	s.acquire()
+	defer s.release()
+
 	_, err := s.client.PutObject(ctx, s.bucket, filename, file, size, minio.PutObjectOptions{})
 	if err != nil {
 		return "", fmt.Errorf("ошибка загрузки файла: %w", err)
@@ -111,13 +117,28 @@ func (s *Storage) GeneratePresignedPost(ctx context.Context, objectName string, 
 }
 
 func (s *Storage) StatObject(ctx context.Context, objectName string) (minio.ObjectInfo, error) {
+	s.acquire()
+	time.Sleep(3 * time.Second)
+	defer s.release()
 	return s.client.StatObject(ctx, s.bucket, objectName, minio.StatObjectOptions{})
 }
 
 func (s *Storage) DeleteObject(ctx context.Context, objectName string) error {
+	s.acquire()
+	defer s.release()
 	return s.client.RemoveObject(ctx, s.bucket, objectName, minio.RemoveObjectOptions{})
 }
 
 // Для формирования URL (если нужно)
 func (s *Storage) GetEndpoint() string { return s.client.EndpointURL().Host }
 func (s *Storage) GetBucket() string   { return s.bucket }
+
+// acquire — занимает слот в семафоре
+func (s *Storage) acquire() {
+	s.sem <- struct{}{} // Если все 10 слотов заняты, горутина будет ждать здесь
+}
+
+// release — освобождает слот
+func (s *Storage) release() {
+	<-s.sem // Забираем один элемент из канала, освобождая место
+}
