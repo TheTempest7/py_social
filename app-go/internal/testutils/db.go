@@ -2,40 +2,56 @@ package testutils
 
 import (
 	"database/sql"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/TheTempest7/social_network/app-go/internal/config"
 	"github.com/TheTempest7/social_network/app-go/internal/repository"
-
-	_ "modernc.org/sqlite"
+	_ "github.com/jackc/pgx/v5/stdlib" // 👈 Драйвер
 )
+
+func resetSchema(t *testing.T, db *sql.DB) {
+	t.Helper()
+	_, err := db.Exec(`DROP SCHEMA public CASCADE; CREATE SCHEMA public;`)
+	if err != nil {
+		t.Fatalf("очистка схемы БД: %v", err)
+	}
+}
 
 // SetupDB — создает in-memory БД, применяет миграции и возвращает репозиторий.
 // Путь к миграциям указывается относительно корня проекта (где go.mod).
 func SetupDB(t *testing.T) *repository.UserRepository {
 	t.Helper()
 
-	// Загружаем конфиг (он нужен для JWT в сервисах)
-	config.AppConfig = &config.Config{
-		JWTSecret:      "test-secret",
-		JWTLifetime:    24 * time.Hour,
-		CookieSecure:   false,
-		CookieSameSite: "Lax",
-	}
+	// 1. Загружаем .env (переменные попадут в os.Getenv)
+	LoadTestEnv(t)
 
-	// Создаем уникальную БД
-	dbName := fmt.Sprintf("file:test_%d?mode=memory&cache=shared", time.Now().UnixNano())
-	db, err := sql.Open("sqlite", dbName)
+	// Загружаем конфиг (он нужен для JWT в сервисах)
+	// 2. ЧИСТОЕ РЕШЕНИЕ: На время теста принудительно меняем хост на локальный.
+	// t.Setenv автоматически вернет всё назад после завершения теста.
+	t.Setenv("DB_NAME", "social_network_test")
+
+	// Теперь хост меняем на локальный (для Docker)
+	t.Setenv("DB_HOST", "127.0.0.1")
+	// 3. Загружаем конфиг (он возьмет DB_HOST=127.0.0.1 из окружения)
+	config.Load()
+
+	dsn := config.AppConfig.DSN()
+	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		t.Fatalf("БД не открылась: %v", err)
 	}
 	t.Cleanup(func() { db.Close() })
+
+	// 4. Проверяем, что реально подключились (иначе truncate упадет с непонятной ошибкой)
+	if err := db.Ping(); err != nil {
+		t.Fatalf("БД не отвечает (%s): %v", dsn, err)
+	}
+
+	resetSchema(t, db)
 
 	// Применяем миграции
 	applyMigrations(t, db)

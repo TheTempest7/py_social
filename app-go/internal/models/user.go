@@ -14,3 +14,15 @@ type User struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 	AvatarURL    *string
 }
+
+type EmailOutbox struct {
+	ID        int       `json:"id"`
+	UserID    int       `json:"user_id"`
+	Email     string    `json:"email"`
+	Subject   string    `json:"subject"`
+	Body      string    `json:"body"`
+	Status    string    `json:"status"`
+	Retries   int       `json:"retries"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}

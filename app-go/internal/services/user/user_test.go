@@ -9,13 +9,16 @@ import (
 	"github.com/TheTempest7/social_network/app-go/internal/repository"
 	"github.com/TheTempest7/social_network/app-go/internal/services/user"
 	testutils "github.com/TheTempest7/social_network/app-go/internal/testutils"
+	"github.com/TheTempest7/social_network/app-go/internal/workers"
 
 	_ "modernc.org/sqlite"
 )
 
 func TestRegisterUserRaceCondition(t *testing.T) {
 	repo := testutils.SetupDB(t) // 👈 Вся настройка БД в одной строке
-	svc := user.NewUserService(repo)
+
+	emailQueue := make(chan workers.EmailTask, 100)
+	svc := user.NewUserService(repo, emailQueue)
 
 	const goroutines = 100
 	var wg sync.WaitGroup
@@ -67,7 +70,9 @@ func TestRegisterUserRaceCondition(t *testing.T) {
 }
 func TestLoginUserSuccess(t *testing.T) {
 	repo := testutils.SetupDB(t)
-	svc := user.NewUserService(repo)
+
+	emailQueue := make(chan workers.EmailTask, 100)
+	svc := user.NewUserService(repo, emailQueue)
 	// Сначала регистрируем
 	regReq := &user.RegisterInput{
 		Email:    "login@test.com",
@@ -101,7 +106,9 @@ func TestLoginUserSuccess(t *testing.T) {
 
 func TestLoginUserWrongPassword(t *testing.T) {
 	repo := testutils.SetupDB(t)
-	svc := user.NewUserService(repo)
+
+	emailQueue := make(chan workers.EmailTask, 100)
+	svc := user.NewUserService(repo, emailQueue)
 
 	_, err := svc.RegisterUser(context.Background(), &user.RegisterInput{
 		Email:    "wrong@test.com",

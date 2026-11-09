@@ -8,6 +8,7 @@ import (
 	"github.com/TheTempest7/social_network/app-go/internal/services/profile"
 	"github.com/TheTempest7/social_network/app-go/internal/services/user"
 	"github.com/TheTempest7/social_network/app-go/internal/testutils"
+	"github.com/TheTempest7/social_network/app-go/internal/workers"
 )
 
 func TestGetByIDSuccess(t *testing.T) {
@@ -16,7 +17,9 @@ func TestGetByIDSuccess(t *testing.T) {
 
 	storage := testutils.SetupStorage(t)
 	// Инициализируем сервисы
-	userSvc := user.NewUserService(repo)
+	emailQueue := make(chan workers.EmailTask, 100)
+
+	userSvc := user.NewUserService(repo, emailQueue)
 	profileSvc := profile.NewProfileService(repo, storage)
 	// 1. Создаем юзера через UserService
 	created, err := userSvc.RegisterUser(context.Background(), &user.RegisterInput{

@@ -11,6 +11,7 @@ import (
 	"github.com/TheTempest7/social_network/app-go/internal/repository"
 	"github.com/TheTempest7/social_network/app-go/internal/services/user"
 	"github.com/TheTempest7/social_network/app-go/internal/testutils"
+	"github.com/TheTempest7/social_network/app-go/internal/workers"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -20,8 +21,13 @@ func TestRegisterUser_EmailTaken_Unit(t *testing.T) {
 		CreateUserFunc: func(ctx context.Context, user *models.User) (*models.User, error) {
 			return nil, repository.ErrEmailTaken
 		},
+		CreateEmailOutboxFunc: func(ctx context.Context, userID int, email, subject, body string) (int, error) {
+			return userID, repository.ErrEmailTaken
+		},
 	}
-	svc := user.NewUserService(mock)
+	emailQueue := make(chan workers.EmailTask, 100)
+
+	svc := user.NewUserService(mock, emailQueue)
 
 	input := &user.RegisterInput{
 		Email:    "taken@test.com",
@@ -44,8 +50,13 @@ func TestRegisterUser_Success_Unit(t *testing.T) {
 			user.ID = 1
 			return user, nil
 		},
+		CreateEmailOutboxFunc: func(ctx context.Context, userID int, email, subject, body string) (int, error) {
+			return 1, nil
+		},
 	}
-	svc := user.NewUserService(mock)
+
+	emailQueue := make(chan workers.EmailTask, 100)
+	svc := user.NewUserService(mock, emailQueue)
 
 	input := &user.RegisterInput{
 		Email:    "new@test.com",
@@ -82,7 +93,9 @@ func TestLoginUser_Success_Unit(t *testing.T) {
 		},
 	}
 
-	svc := user.NewUserService(mock)
+	emailQueue := make(chan workers.EmailTask, 100)
+
+	svc := user.NewUserService(mock, emailQueue)
 
 	input := user.LoginInput{
 		Username: "testuser",
@@ -122,7 +135,9 @@ func TestLoginUser_Inactive_Unit(t *testing.T) {
 		},
 	}
 
-	svc := user.NewUserService(mock)
+	emailQueue := make(chan workers.EmailTask, 100)
+
+	svc := user.NewUserService(mock, emailQueue)
 
 	input := user.LoginInput{
 		Username: "testuser",

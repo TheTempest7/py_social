@@ -3,17 +3,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/TheTempest7/social_network/app-go/internal/auth"
 	"github.com/TheTempest7/social_network/app-go/internal/dto"
 	"github.com/TheTempest7/social_network/app-go/internal/models"
 	"github.com/TheTempest7/social_network/app-go/internal/repository"
+	"github.com/TheTempest7/social_network/app-go/internal/workers"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UserService struct {
-	repo repository.UserRepo
+	repo       repository.UserRepo
+	emailQueue chan<- workers.EmailTask
 }
 
 // Ошибки сервиса
@@ -23,8 +26,8 @@ var (
 	ErrUserInactive    = errors.New("пользователь неактивен")
 )
 
-func NewUserService(repo repository.UserRepo) *UserService {
-	return &UserService{repo: repo}
+func NewUserService(repo repository.UserRepo, emailQueue chan<- workers.EmailTask) *UserService {
+	return &UserService{repo: repo, emailQueue: emailQueue}
 }
 
 // RegisterUser — регистрация нового пользователя
@@ -55,6 +58,25 @@ func (s *UserService) RegisterUser(ctx context.Context, input *RegisterInput) (*
 		return nil, fmt.Errorf("создание пользователя: %w", err)
 	}
 
+	emailID, err := s.repo.CreateEmailOutbox(
+		ctx,
+		created.ID,
+		created.Email,
+		"Добро пожаловать!",
+		"Привет, "+created.Username+"!",
+	)
+	if err != nil {
+		// Если не смогли сохранить письмо, логируем ошибку, но юзера не удаляем.
+		slog.Error("Не удалось сохранить email в outbox", "error", err, "user_id", created.ID)
+	} else {
+		select {
+		case s.emailQueue <- workers.EmailTask{ID: emailID}:
+			slog.Info("Задача на отправку email добавлена в очередь")
+		default:
+
+			slog.Warn("Очередь email переполнена, пропускаем отправку")
+		}
+	}
 	// 5. Возвращаем DTO (без пароля)
 	return &dto.UserOutput{
 		ID:        created.ID,
