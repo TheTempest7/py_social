@@ -32,9 +32,12 @@ func StartEmailWorkers(numWorkers int, tasks <-chan EmailTask, repo repository.U
 
 				// 2. Формируем и отправляем
 				msg := fmt.Appendf(nil, "To: %s\r\nSubject: %s\r\n\r\n%s\r\n", email.Email, email.Subject, email.Body)
-
 				addr := fmt.Sprintf("%s:%d", config.AppConfig.SMTPHost, config.AppConfig.SMTPPort)
-				auth := smtp.PlainAuth("", config.AppConfig.SMTPUser, config.AppConfig.SMTPPass, config.AppConfig.SMTPHost)
+
+				var auth smtp.Auth
+				if config.AppConfig.SMTPUser != "" {
+					auth = smtp.PlainAuth("", config.AppConfig.SMTPUser, config.AppConfig.SMTPPass, config.AppConfig.SMTPHost)
+				}
 
 				err = smtp.SendMail(addr, auth, config.AppConfig.SMTPFrom, []string{email.Email}, msg)
 

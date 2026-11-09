@@ -36,6 +36,7 @@ func InitStorage() (*storage.Storage, error) {
 		config.AppConfig.MinioUseSSL,
 		config.AppConfig.MinioRegion,
 		config.AppConfig.MinioPublicURL,
+		config.AppConfig.MinioMaxConcurrentRequests,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка подключения к MinIO: %w", err)

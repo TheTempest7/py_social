@@ -3,6 +3,7 @@ package profile // 👈 было package services
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"mime/multipart"
 	"strings"
 	"time"
@@ -99,6 +100,7 @@ func (s *ProfileService) ConfirmAvatarUpload(ctx context.Context, userID int, ob
 	// 1. Проверяем, что файл реально существует и его размер/тип ок
 	info, err := s.storage.StatObject(ctx, objectName)
 	if err != nil {
+		slog.Error("file not found or invalid: %w", err)
 		return nil, fmt.Errorf("file not found or invalid: %w", err)
 	}
 
@@ -111,6 +113,7 @@ func (s *ProfileService) ConfirmAvatarUpload(ctx context.Context, userID int, ob
 	// Проверка типа (MinIO вернёт Content-Type, который был указан при загрузке)
 	if !strings.HasPrefix(info.ContentType, "image/") {
 		_ = s.storage.DeleteObject(ctx, objectName)
+		slog.Error("invalid content type - failed", "err", err)
 		return nil, fmt.Errorf("invalid content type")
 	}
 
@@ -121,6 +124,7 @@ func (s *ProfileService) ConfirmAvatarUpload(ctx context.Context, userID int, ob
 	// 3. Сохраняем в БД через репозиторий (тот самый UpdateAvatar)
 	updated, err := s.repo.UpdateAvatar(ctx, userID, url)
 	if err != nil {
+		slog.Error("UpdateAvatar failed", "err", err)
 		return nil, err
 	}
 
