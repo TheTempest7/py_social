@@ -100,7 +100,7 @@ func (s *ProfileService) ConfirmAvatarUpload(ctx context.Context, userID int, ob
 	// 1. Проверяем, что файл реально существует и его размер/тип ок
 	info, err := s.storage.StatObject(ctx, objectName)
 	if err != nil {
-		slog.Error("file not found or invalid: %w", err)
+		slog.Error("file not found or invalid", "error", err)
 		return nil, fmt.Errorf("file not found or invalid: %w", err)
 	}
 
