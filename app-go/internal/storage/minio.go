@@ -118,7 +118,6 @@ func (s *Storage) GeneratePresignedPost(ctx context.Context, objectName string, 
 
 func (s *Storage) StatObject(ctx context.Context, objectName string) (minio.ObjectInfo, error) {
 	s.acquire()
-	time.Sleep(3 * time.Second)
 	defer s.release()
 	return s.client.StatObject(ctx, s.bucket, objectName, minio.StatObjectOptions{})
 }
