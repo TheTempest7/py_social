@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/TheTempest7/social_network/app-go/internal/broker"
 	"github.com/TheTempest7/social_network/app-go/internal/config"
 	"github.com/TheTempest7/social_network/app-go/internal/database"
 	"github.com/TheTempest7/social_network/app-go/internal/storage"
@@ -43,4 +44,14 @@ func InitStorage() (*storage.Storage, error) {
 	}
 	slog.Info("✅ Подключено к MinIO")
 	return s, nil
+}
+
+func InitBroker() (*broker.RabbitMQ, error) {
+	rabbit, err := broker.NewRabbitMQ()
+	if err != nil {
+		slog.Error("failed to connect to RabbitMQ", "error", err)
+		return nil, fmt.Errorf("ошибка подключения к MinIO: %w", err)
+	}
+	slog.Info("✅ running RabbitMQ")
+	return rabbit, nil
 }

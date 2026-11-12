@@ -12,6 +12,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 
 	_ "github.com/TheTempest7/social_network/app-go/docs"
@@ -40,7 +41,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	r := app.NewRouter(db, storage)
+	broker, err := app.InitBroker() // 👈 Две переменные!
+	if err != nil {
+		slog.Error("❌ Ошибка RabbitMQ:", "error", err)
+		os.Exit(1)
+	}
+	defer broker.Close()
+
+	r := app.NewRouter(db, storage, broker)
 
 	app.RunServer(r, config.AppConfig.ServerPort)
 }

@@ -25,6 +25,8 @@ services:
         condition: service_started
       postgres:
         condition: service_healthy 
+      rabbitmq:
+        condition: service_healthy
     volumes:
       - ./app-go/data:/app/data         
 
@@ -77,9 +79,22 @@ services:
     ports:
       - "1025:1025"
       - "8025:8025" 
+  
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"   # Порт для AMQP (твой Go-код будет стучаться сюда)
+      - "15672:15672" # Веб-интерфейс (http://localhost:15672)
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   redis_data:
   minio_data:
   pg_data:
-  

@@ -9,14 +9,17 @@ import (
 	"github.com/TheTempest7/social_network/app-go/internal/dto"
 	"github.com/TheTempest7/social_network/app-go/internal/models"
 	"github.com/TheTempest7/social_network/app-go/internal/repository"
-	"github.com/TheTempest7/social_network/app-go/internal/workers"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
+type MessageBroker interface {
+	Publish(ctx context.Context, queueName string, payload any) error
+}
+
 type UserService struct {
-	repo       repository.UserRepo
-	emailQueue chan<- workers.EmailTask
+	repo   repository.UserRepo
+	broker MessageBroker
 }
 
 // Ошибки сервиса
@@ -26,8 +29,8 @@ var (
 	ErrUserInactive    = errors.New("пользователь неактивен")
 )
 
-func NewUserService(repo repository.UserRepo, emailQueue chan<- workers.EmailTask) *UserService {
-	return &UserService{repo: repo, emailQueue: emailQueue}
+func NewUserService(repo repository.UserRepo, b MessageBroker) *UserService {
+	return &UserService{repo: repo, broker: b}
 }
 
 // RegisterUser — регистрация нового пользователя
@@ -65,16 +68,11 @@ func (s *UserService) RegisterUser(ctx context.Context, input *RegisterInput) (*
 		"Добро пожаловать!",
 		"Привет, "+created.Username+"!",
 	)
-	if err != nil {
-		// Если не смогли сохранить письмо, логируем ошибку, но юзера не удаляем.
-		slog.Error("Не удалось сохранить email в outbox", "error", err, "user_id", created.ID)
-	} else {
-		select {
-		case s.emailQueue <- workers.EmailTask{ID: emailID}:
-			slog.Info("Задача на отправку email добавлена в очередь")
-		default:
-
-			slog.Warn("Очередь email переполнена, пропускаем отправку")
+	if err == nil {
+		// Публикуем в очередь "email_tasks"
+		payload := map[string]int{"id": emailID}
+		if err := s.broker.Publish(ctx, "email_tasks", payload); err != nil {
+			slog.Warn("Не удалось отправить в RabbitMQ, письмо останется в БД", "error", err)
 		}
 	}
 	// 5. Возвращаем DTO (без пароля)

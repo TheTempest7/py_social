@@ -50,3 +50,5 @@ curl -X POST "$URL" \
   -b cookie.txt \
   -H "Content-Type: application/json" \
   -d "{\"object_name\":\"$KEY\"}"
+
+  for i in {1..15}; do curl -i -X POST http://localhost:8080/api/users/avatar/confirm -b cookie.txt -H "Content-Type: application/json" -d "{\"object_name\":\"$KEY\"}" & done; wait

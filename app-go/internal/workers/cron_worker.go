@@ -5,10 +5,11 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/TheTempest7/social_network/app-go/internal/broker"
 	"github.com/TheTempest7/social_network/app-go/internal/repository"
 )
 
-func StartEmailCron(repo repository.UserRepo, queue chan<- EmailTask) {
+func StartEmailCron(repo repository.UserRepo, queueName string, broker *broker.RabbitMQ) {
 	ticker := time.NewTicker(1 * time.Minute)
 	for range ticker.C {
 		ctx := context.Background()
@@ -18,11 +19,11 @@ func StartEmailCron(repo repository.UserRepo, queue chan<- EmailTask) {
 			continue
 		}
 		for _, e := range emails {
-			select {
-			case queue <- EmailTask{ID: e.ID}:
-				// Успешно вернули в очередь
-			default:
-				// Очередь все еще забита, попробуем в следующий раз
+			payload := map[string]int{"id": e.ID}
+			if err := broker.Publish(ctx, queueName, payload); err != nil {
+				slog.Error("Cron: не удалось опубликовать в RabbitMQ", "error", err, "email_id", e.ID)
+			} else {
+				slog.Info("Cron: письмо возвращено в очередь", "email_id", e.ID)
 			}
 		}
 	}
