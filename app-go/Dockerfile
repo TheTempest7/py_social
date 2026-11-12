@@ -6,7 +6,7 @@ WORKDIR /src/app-go
 # Копируем go.mod и go.sum (из корня контекста)
 COPY go.mod go.sum /src/
 WORKDIR /src
-RUN go mod download
+
 
 # Возвращаемся в папку app-go и копируем туда код
 WORKDIR /src/app-go

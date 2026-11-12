@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/TheTempest7/social_network/app-go/internal/auth"
+	"github.com/TheTempest7/social_network/app-go/internal/broker"
 	"github.com/TheTempest7/social_network/app-go/internal/config"
 	"github.com/TheTempest7/social_network/app-go/internal/handlers"
 	appmw "github.com/TheTempest7/social_network/app-go/internal/middleware"
@@ -24,19 +25,22 @@ import (
 	// ... твои пакеты auth, handlers, middleware ...
 )
 
+const (
+	QueueEmail = "email_tasks"
+)
+
 func NewRouter(
-	db *sql.DB, storage *storage.Storage,
+	db *sql.DB, storage *storage.Storage, broker *broker.RabbitMQ,
 ) http.Handler {
 
 	// 👇 Создаём слои
 	repo := repository.NewUserRepository(db)
 
-	emailQueue := make(chan workers.EmailTask, 100)
-	workers.StartEmailWorkers(3, emailQueue, repo)
+	workers.StartEmailWorkers(3, broker, repo, QueueEmail)
 
-	go workers.StartEmailCron(repo, emailQueue)
+	go workers.StartEmailCron(repo, QueueEmail, broker)
 
-	userService := user.NewUserService(repo, emailQueue)
+	userService := user.NewUserService(repo, broker)
 	blacklist := auth.NewBlacklist(config.AppConfig.RedisAddr, config.AppConfig.RedisPassword)
 	authHandler := handlers.NewAuthHandler(userService, blacklist)
 	profileService := profile.NewProfileService(repo, storage)

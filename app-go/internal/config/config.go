@@ -46,6 +46,12 @@ type Config struct {
 	SMTPFrom string
 
 	MinioMaxConcurrentRequests int
+
+	RabbitMQHost     string
+	RabbitMQPort     int
+	RabbitMQUser     string
+	RabbitMQPassword string
+	RabbitMQVhost    string
 }
 
 // Глобальная переменная, чтобы не прокидывать её везде
@@ -93,6 +99,12 @@ func Load() {
 		SMTPFrom: getEnv("SMTP_FROM", "noreply@social.network"),
 
 		MinioMaxConcurrentRequests: getEnvInt("MINIO_MAX_CONCURRENT_REQUESTS", 12),
+
+		RabbitMQHost:     getEnv("RABBITMQ_HOST", ""),
+		RabbitMQPort:     getEnvInt("RABBITMQ_PORT", 5672),
+		RabbitMQUser:     getEnv("RABBITMQ_USER", ""),
+		RabbitMQPassword: getEnv("RABBITMQ_PASSWORD", ""),
+		RabbitMQVhost:    getEnv("RABBITMQ_VHOST", ""),
 	}
 }
 
